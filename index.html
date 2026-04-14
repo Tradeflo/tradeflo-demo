@@ -510,11 +510,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 </main>
 
 <footer class="footer">
-  <a href="https://tradefloai.ca" target="_blank">Tradeflo AI</a> &nbsp;&middot;&nbsp; <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f68c979893b68284979293909a99979fd89597">[email&#160;protected]</a> &nbsp;&middot;&nbsp; 506-259-0537
+  <a href="https://tradefloai.ca" target="_blank">Tradeflo AI</a> &nbsp;&middot;&nbsp; zane@tradefloai.ca &nbsp;&middot;&nbsp; 506-259-0537
 </footer>
 </div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js" defer></script><script>
+<script>
 var lines = [];
 var sitePhotos = [];
 var workLogs = [];
@@ -966,4 +966,12 @@ window.onload=function(){
 
   // Delivery
   ['del0','del1','del2'].forEach(function(id){
-    document.getEle
+    document.getElementById(id).onclick=function(){
+      ['del0','del1','del2'].forEach(function(i){document.getElementById(i).classList.remove('sel');});
+      document.getElementById(id).classList.add('sel');
+    };
+  });
+};
+</script>
+</body>
+</html>
