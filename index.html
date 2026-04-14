@@ -726,7 +726,7 @@ async function callChatAPI(userText) {
     'When ready:\nREADY_TO_QUOTE\n{"jobType":"...","propertyType":"...","sqft":"...","scope":"...","materials":"...","location":"Atlantic Canada","timeline":"..."}';
 
   try {
-    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+    var resp=await fetch('/api/claude',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,system:sys,messages:conversationHistory.filter(function(m){return m.content;})})
     });
