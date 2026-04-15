@@ -647,18 +647,35 @@ function handleWorkLogs(files) {
 }
 
 // ── SITE PHOTOS ──────────────────────────────────────────────
+function compressImage(file, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var image = new Image();
+    image.onload = function() {
+      var canvas = document.createElement('canvas');
+      var MAX = 1024;
+      var w = image.width, h = image.height;
+      if(w > h) { if(w > MAX){ h = Math.round(h * MAX / w); w = MAX; } }
+      else { if(h > MAX){ w = Math.round(w * MAX / h); h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(image, 0, 0, w, h);
+      var compressed = canvas.toDataURL('image/jpeg', 0.75);
+      callback(compressed.split(',')[1], 'image/jpeg');
+    };
+    image.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function handleSitePhotos(files) {
   var strip = document.getElementById('photo-strip');
   var badge = document.getElementById('photo-badge');
   Array.from(files).forEach(function(file) {
     if(sitePhotos.length >= 4) return;
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var b64 = e.target.result.split(',')[1];
-      var mime = file.type || 'image/jpeg';
+    compressImage(file, function(b64, mime) {
       sitePhotos.push({ b64: b64, mime: mime, name: file.name });
       var img = document.createElement('img');
-      img.src = e.target.result;
+      img.src = 'data:' + mime + ';base64,' + b64;
       img.className = 'photo-thumb';
       img.title = 'Click to remove';
       var idx = sitePhotos.length - 1;
@@ -670,8 +687,7 @@ function handleSitePhotos(files) {
       strip.insertBefore(img, document.getElementById('photo-add-btn'));
       badge.style.display = 'inline-flex';
       if(sitePhotos.length >= 4) document.getElementById('photo-add-btn').style.display = 'none';
-    };
-    reader.readAsDataURL(file);
+    });
   });
 }
 
