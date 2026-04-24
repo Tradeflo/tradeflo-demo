@@ -37,7 +37,7 @@ export function SendStep({ model }: SendStepProps) {
           type="button"
           className="btn btn-primary"
           id="btn-reset"
-          onClick={resetFlow}
+          onClick={() => void resetFlow()}
         >
           Start a new quote
         </button>

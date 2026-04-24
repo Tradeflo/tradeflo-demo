@@ -1,6 +1,10 @@
 .qb-app{font-size:16px;background:var(--bg);color:var(--text);font-family:var(--qb-font, "Instrument Sans"), system-ui, sans-serif;min-height:100vh;line-height:1.5}
 .qb-app *,.qb-app *::before,.qb-app *::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 
+.qb-banner{padding:10px 20px;font-size:13px;text-align:center;border-bottom:1px solid var(--border)}
+.qb-banner-error{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+.qb-banner-muted{background:var(--surface);color:var(--text2)}
+
 .qb-app{
   --bg:#f5f4f1;--white:#fff;--surface:#fafaf8;--border:#e2e0db;--border-strong:#c8c5be;
   --text:#1a1916;--text2:#6b6860;--text3:#a09d98;--accent-light:#f0ede8;
@@ -20,7 +24,9 @@
 .header{background:var(--white);border-bottom:1px solid var(--border);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow)}
 .logo{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--text)}
 .logo-dot{width:8px;height:8px;border-radius:50%;background:var(--text)}
-.header-right{display:flex;align-items:center;gap:8px}
+.header-right{display:flex;align-items:center;gap:10px}
+.qb-logout{font-size:13px;font-weight:500;color:var(--text2);background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:var(--radius);cursor:pointer;font-family:var(--font);transition:color .15s,border-color .15s,background .15s}
+.qb-logout:hover{color:var(--text);border-color:var(--text3);background:var(--white)}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:livepulse 2s infinite}
 .header-label{font-size:13px;color:var(--text2)}
 

@@ -16,6 +16,16 @@ export function QuoteBuilderApp() {
 
   return (
     <div className="qb-app">
+      {model.persistError ? (
+        <div className="qb-banner qb-banner-error" role="alert">
+          {model.persistError}
+        </div>
+      ) : null}
+      {model.isHydrating ? (
+        <div className="qb-banner qb-banner-muted" aria-busy="true">
+          Loading your quote…
+        </div>
+      ) : null}
       <div className="app">
         <QuoteHeader />
         <StepNavigation

@@ -1,6 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
 import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/api/session";
 import {
   quoteAiResponseSchema,
   quoteGenerateRequestSchema,
@@ -48,6 +49,11 @@ function buildPrompt(input: {
 }
 
 export async function POST(req: Request) {
+  const { user } = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
       { error: "ANTHROPIC_API_KEY is not configured" },

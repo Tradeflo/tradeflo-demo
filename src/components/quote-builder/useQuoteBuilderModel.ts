@@ -14,6 +14,12 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  buildDraftPayloadV1,
+  parseQuoteDraftPayload,
+  toUiMessages,
+} from "@/lib/quotes/draft-payload";
 import type { QuoteGenerateRequest } from "@/lib/schemas/quote-builder";
 import { getTextFromUIMessage } from "@/lib/ui-message";
 import { compressImage } from "./image-utils";
@@ -53,6 +59,9 @@ const welcomeMessages: UIMessage[] = [
     parts: [{ type: "text", text: WELCOME_TEXT }],
   },
 ];
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function useQuoteBuilderModel() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -101,6 +110,12 @@ export function useQuoteBuilderModel() {
   const [editVoiceTranscript, setEditVoiceTranscript] = useState("");
 
   const [chatSessionId, setChatSessionId] = useState(() => generateId());
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [quoteId, setQuoteId] = useState<string | null>(null);
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [persistError, setPersistError] = useState<string | null>(null);
 
   const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
@@ -162,6 +177,233 @@ export function useQuoteBuilderModel() {
       });
     },
   });
+
+  const hydrateFromPayload = useCallback(
+    (payloadRecord: Record<string, unknown>) => {
+      const p = parseQuoteDraftPayload(payloadRecord);
+      setCurrentStep(p.currentStep);
+      setCurrentMode(p.currentMode);
+      setLines(p.lines);
+      setSitePhotos(p.sitePhotos);
+      setWorkLogs([]);
+      setCollectedJobData(p.collectedJobData);
+      setQuoteReady(p.quoteReady);
+      setQuoteNum(p.quoteNum);
+      setFname(p.fname);
+      setLname(p.lname);
+      setCemail(p.cemail);
+      setCphone(p.cphone);
+      setJobForm(p.jobForm);
+      setQuoteNotes(p.quoteNotes);
+      setPersonalNote(p.personalNote);
+      setChangeText(p.changeText);
+      setShowChangeBox(p.showChangeBox);
+      setDelivery(p.delivery);
+      setSentDone(p.sentDone);
+      setAiRationale(p.aiRationale);
+      setFormVoiceTranscript(p.formVoiceTranscript);
+      setEditVoiceTranscript(p.editVoiceTranscript);
+      setShowChatBuildBtn(p.showChatBuildBtn);
+      const sid = p.chatSessionId || generateId();
+      setChatSessionId(sid);
+      const msgs = toUiMessages(p.chatMessages);
+      setMessages(msgs.length ? msgs : [...welcomeMessages]);
+    },
+    [setMessages],
+  );
+
+  useEffect(() => {
+    const ac = new AbortController();
+    let cancelled = false;
+    const qp = searchParams.get("quote");
+
+    void (async () => {
+      setIsHydrating(true);
+      setPersistError(null);
+
+      try {
+        if (qp && UUID_RE.test(qp)) {
+          const res = await fetch(`/api/quotes/${qp}`, {
+            signal: ac.signal,
+          });
+          if (res.ok) {
+            const body = (await res.json()) as {
+              data?: {
+                id: string;
+                draft?: { payload?: Record<string, unknown> };
+              };
+            };
+            if (!cancelled && body.data) {
+              const pl = body.data.draft?.payload;
+              hydrateFromPayload(
+                pl && typeof pl === "object" && !Array.isArray(pl)
+                  ? (pl as Record<string, unknown>)
+                  : {},
+              );
+              setQuoteId(body.data.id);
+              router.replace(`/?quote=${body.data.id}`);
+              return;
+            }
+          }
+        }
+
+        const listRes = await fetch("/api/quotes", { signal: ac.signal });
+        if (!listRes.ok) {
+          const err = (await listRes.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(err.error ?? "Could not load quotes");
+        }
+        const listBody = (await listRes.json()) as {
+          data?: Array<{
+            id: string;
+            draft?: { payload?: Record<string, unknown> };
+          }>;
+        };
+        const items = listBody.data ?? [];
+
+        if (!cancelled && items.length > 0) {
+          const d = items[0]!;
+          const pl = d.draft?.payload;
+          hydrateFromPayload(
+            pl && typeof pl === "object" && !Array.isArray(pl)
+              ? (pl as Record<string, unknown>)
+              : {},
+          );
+          setQuoteId(d.id);
+          router.replace(`/?quote=${d.id}`);
+          return;
+        }
+
+        const postRes = await fetch("/api/quotes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+          signal: ac.signal,
+        });
+        if (!postRes.ok) {
+          const err = (await postRes.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(err.error ?? "Could not create quote");
+        }
+        const postBody = (await postRes.json()) as { data?: { id: string } };
+        if (!cancelled && postBody.data?.id) {
+          hydrateFromPayload({});
+          setQuoteId(postBody.data.id);
+          router.replace(`/?quote=${postBody.data.id}`);
+        }
+      } catch (e) {
+        if (cancelled || (e instanceof Error && e.name === "AbortError"))
+          return;
+        setPersistError(
+          e instanceof Error
+            ? e.message
+            : "Could not sync quote with the server",
+        );
+      } finally {
+        if (!cancelled) setIsHydrating(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+    // Run once on mount so `router.replace(?quote=)` does not re-trigger a full bootstrap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const persistSnapshot = useMemo(
+    () =>
+      buildDraftPayloadV1({
+        currentStep,
+        currentMode,
+        lines,
+        sitePhotos,
+        workLogs,
+        collectedJobData,
+        quoteReady,
+        quoteNum,
+        fname,
+        lname,
+        cemail,
+        cphone,
+        jobForm,
+        quoteNotes,
+        personalNote,
+        changeText,
+        showChangeBox,
+        delivery,
+        sentDone,
+        aiRationale,
+        formVoiceTranscript,
+        editVoiceTranscript,
+        showChatBuildBtn,
+        chatSessionId,
+        messages,
+      }),
+    [
+      currentStep,
+      currentMode,
+      lines,
+      sitePhotos,
+      workLogs,
+      collectedJobData,
+      quoteReady,
+      quoteNum,
+      fname,
+      lname,
+      cemail,
+      cphone,
+      jobForm,
+      quoteNotes,
+      personalNote,
+      changeText,
+      showChangeBox,
+      delivery,
+      sentDone,
+      aiRationale,
+      formVoiceTranscript,
+      editVoiceTranscript,
+      showChatBuildBtn,
+      chatSessionId,
+      messages,
+    ],
+  );
+
+  useEffect(() => {
+    if (isHydrating || !quoteId) return;
+
+    const t = setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch(`/api/quotes/${quoteId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              payload: persistSnapshot as unknown as Record<string, unknown>,
+            }),
+          });
+          if (!res.ok) {
+            const err = (await res.json().catch(() => ({}))) as {
+              error?: string;
+            };
+            throw new Error(
+              typeof err.error === "string" ? err.error : "Save failed",
+            );
+          }
+          setPersistError(null);
+        } catch (e) {
+          setPersistError(
+            e instanceof Error ? e.message : "Could not save quote",
+          );
+        }
+      })();
+    }, 1000);
+
+    return () => clearTimeout(t);
+  }, [persistSnapshot, quoteId, isHydrating]);
 
   const typing = chatStatus === "submitted" || chatStatus === "streaming";
   const chatDisabled = chatStatus !== "ready";
@@ -373,7 +615,7 @@ export function useQuoteBuilderModel() {
     setSitePhotos((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
-  const resetFlow = useCallback(() => {
+  const resetFlow = useCallback(async () => {
     setLines([]);
     setWorkLogs([]);
     setSitePhotos([]);
@@ -400,13 +642,40 @@ export function useQuoteBuilderModel() {
     setQuoteNotes(
       "Quote valid for 30 days. Pricing assumes standard site access. Final scope confirmed on-site before work begins.",
     );
+    setPersonalNote("");
+    setChangeText("");
+    setShowChangeBox(false);
+    setDelivery("email");
     setCurrentMode("chat");
     setFormError("");
     setQuoteError("");
     clearChatError();
-    setChatSessionId(generateId());
+    const nextSid = generateId();
+    setChatSessionId(nextSid);
+    setMessages([...welcomeMessages]);
     goTo(0);
-  }, [goTo, clearChatError]);
+
+    try {
+      const res = await fetch("/api/quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Failed to create quote");
+      }
+      const body = (await res.json()) as { data?: { id: string } };
+      if (body.data?.id) {
+        setQuoteId(body.data.id);
+        router.replace(`/?quote=${body.data.id}`);
+      }
+    } catch (e) {
+      setPersistError(
+        e instanceof Error ? e.message : "Failed to start a new quote",
+      );
+    }
+  }, [goTo, clearChatError, router, setMessages]);
 
   return {
     currentStep,
@@ -470,6 +739,9 @@ export function useQuoteBuilderModel() {
     handleSitePhotos,
     removePhoto,
     resetFlow,
+    quoteId,
+    isHydrating,
+    persistError,
   };
 }
 
