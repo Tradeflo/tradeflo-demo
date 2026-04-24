@@ -1,0 +1,227 @@
+TRADEFLO AI
+Contractor Onboarding Flow — Copy & UX Reference
+This document outlines the full onboarding experience for a new contractor signing up to Tradeflo AI. It covers every screen, every message, and every tooltip — written as final copy ready to hand to the developer.
+Onboarding Philosophy
+The goal of onboarding is one thing: get the contractor to their first accurate quote as fast as possible. Every step exists to serve that goal. We don't ask for information we don't need. We explain why we're asking for what we do need. And we make it easy to skip steps with a clear warning about what they'll lose if they do.
+The core insight
+A contractor who generates a bad first quote because they skipped setup will blame the product, not themselves. Onboarding protects both the contractor and the product reputation. Getting them set up properly is not a nice-to-have — it is the product working correctly.
+
+Step 1 — Welcome Screen
+Shown immediately after account creation and email verification. This is the first thing a contractor sees inside the app.
+
+
+1
+Welcome screen
+First screen after sign up
+
+
+Headline
+Welcome to Tradeflo AI. Let's get your first quote ready.
+
+
+Subhead
+Before you start quoting, take two minutes to set up your account. Contractors who complete setup get quotes that are 3x more accurate.
+
+
+Primary CTA
+Set up my account →
+
+
+Skip link
+Skip for now — I'll set up later
+Skip warning — shown if they click skip
+“Heads up — quotes generated without setup use general market rates, not your actual costs. Your first few quotes may be off until you upload your work history. You can complete setup any time from your account settings.”
+
+Step 2 — Business Details
+Basic info that personalises the app and appears on quotes sent to customers.
+
+
+2
+Business details
+Personalises the app and your customer-facing quotes
+
+
+Screen title
+Tell us about your business
+
+
+Screen sub
+This information appears on quotes you send to customers. Keep it professional.
+Form fields
+
+
+
+Field
+Placeholder text
+Required?
+Business name
+e.g. Smith Roofing Ltd.
+Required
+Your name
+First and last name
+Required
+Phone number
+506-...
+Required
+Email address
+your@business.com
+Required
+City / Province
+e.g. Halifax, NS
+Required
+Trade type
+Roofing, Epoxy, Plumbing...
+Required
+Business number / HST
+Optional — appears on quotes
+Optional
+
+
+CTA
+Save and continue →
+
+Step 3 — Work Log Upload
+The most important setup step. This is where the AI learns the contractor's real rates. This screen needs to clearly explain the value without being technical.
+
+
+3
+Upload your work history
+The most important step — this calibrates your pricing
+
+
+Screen title
+Calibrate your pricing
+
+
+Screen sub
+Upload a few past invoices or quotes and we'll use them to calibrate the AI to your actual rates — not industry averages. This is the single biggest thing you can do to get accurate quotes.
+Why this matters — shown as an info panel on screen
+Without work history:
+The AI uses general Atlantic Canada market rates. Quotes may vary by $1,000–$2,000 depending on how your real rates compare to the market.
+With work history:
+The AI learns your actual labour rates and material costs. Quotes are calibrated to how you really price jobs — typically accurate within 5–10%.
+
+
+Upload label
+Drop your past invoices or quotes here
+
+
+Upload sub
+PDF, CSV, Excel, or plain text. Even 2–3 past jobs makes a significant difference. Max 10MB per file.
+
+
+Accepted formats note
+We accept invoices, quotes, job summaries, or any document that shows what you charged and for what.
+
+
+Skip link
+Skip for now — I'll add this later
+Skip warning
+“No problem — you can add work history any time from your account settings. Just know that your quotes will use general market rates until you do. We recommend uploading at least 3 past jobs for best results.”
+
+
+Success message
+✓  [X] files uploaded. Your pricing is now calibrated to your real rates.
+
+
+CTA
+Save and continue →
+
+Step 4 — You're Ready Screen
+Shown after setup is complete. Bridges onboarding to the actual product.
+
+
+4
+Setup complete
+Launch screen before the contractor starts quoting
+
+
+Headline
+You're all set. Let's build your first quote.
+
+
+Sub
+Describe the job out loud or type it in. The AI will ask a few follow-up questions and build you a professional quote in under 5 minutes.
+Tips panel — shown on first quote only
+For the most accurate quote, include:
+Type of job and approximate size
+Property type — residential, commercial, new build
+Any unusual conditions — access issues, surface condition, tight spaces
+Site photos if you have them — the AI can see what you see
+
+
+CTA
+Start my first quote →
+In-App Tooltips — Ongoing
+These appear throughout the app as contextual hints. Keep them short and useful. They should disappear after the contractor has seen them three times.
+Work log calibration panel
+
+
+No logs uploaded
+⚠️  Using general market rates. Upload past invoices to calibrate pricing to your real costs.
+
+
+Logs uploaded
+✓  Pricing calibrated to your work history. Quotes reflect your actual rates.
+
+
+Tooltip on hover
+Work logs are past invoices or quotes you've sent. The AI uses them to learn your real labour and material rates so quotes are accurate to how you actually price jobs.
+Site photos panel
+
+
+No photos
+Add site photos to improve accuracy. The AI can see what you see — roof pitch, surface condition, access issues.
+
+
+Photos added
+✓  [X] photo(s) added. The AI will factor in what it sees.
+
+
+Tooltip on hover
+Site photos help the AI account for things that are hard to describe — unusual roof pitch, surface damage, access difficulty. Even one photo can meaningfully improve accuracy.
+Quote accuracy indicator
+
+
+No setup
+⚠️  Estimated accuracy: General. Add work history and job details to improve.
+
+
+Basic setup
+●  Estimated accuracy: Good. Add site photos or more work history to improve further.
+
+
+Full setup
+✓  Estimated accuracy: High. This quote is calibrated to your real rates.
+
+Post-Signup Email Sequence
+Three short emails sent after signup. Written to feel like they're from a real person, not a system.
+Email 1 — Sent immediately after signup
+
+
+Subject
+Welcome to Tradeflo AI — one thing to do first
+
+
+Body
+Hey [First name],  Welcome aboard.  One thing before you start quoting — upload a couple of past invoices to your account. It takes two minutes and it's the single biggest thing you can do to make your quotes accurate.  Without them the AI uses general market rates, which might be close or might be off depending on how you price jobs. With them it learns your real numbers.  You can do it here: [Upload work history →]  Zane Tradeflo AI
+Email 2 — Sent 48 hours after signup if no work logs uploaded
+
+
+Subject
+Your quotes are using general rates — here's how to fix that
+
+
+Body
+Hey [First name],  Just noticed you haven't uploaded any past invoices yet.  No pressure — but I want to make sure your quotes are actually useful to you. Right now they're based on general market rates for your trade and region. Once you upload even two or three past jobs the AI calibrates to your real numbers and the difference is significant.  Takes about two minutes: [Upload work history →]  Zane Tradeflo AI
+Email 3 — Sent after first quote is generated
+
+
+Subject
+How was that quote?
+
+
+Body
+Hey [First name],  You just generated your first quote — how did the numbers look?  If they were off, it's almost always one of two things: the job description needed more detail, or work history hasn't been uploaded yet. Both are easy to fix.  If the numbers looked right, great — that's the product working as intended.  Reply to this email if you have any questions. I read every one.  Zane Tradeflo AI
+Zane — Tradeflo AI
+This document is the onboarding copy reference for the developer build. All copy is final and ready to implement.
