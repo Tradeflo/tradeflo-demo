@@ -1,5 +1,6 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { getSessionUser } from "@/lib/api/session";
 
 const CHAT_SYSTEM = `You are a friendly AI estimator for Tradeflo AI, a quoting tool for trades contractors in Atlantic Canada.
 
@@ -19,6 +20,14 @@ READY_TO_QUOTE
 {"jobType":"...","propertyType":"...","sqft":"...","scope":"...","materials":"...","location":"Atlantic Canada","timeline":"..."}`;
 
 export async function POST(req: Request) {
+  const { user } = await getSessionUser();
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return new Response(
       JSON.stringify({ error: "ANTHROPIC_API_KEY is not configured" }),
