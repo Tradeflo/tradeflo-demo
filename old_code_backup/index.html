@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Tradeflo AI — Quote Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f5f4f1;--white:#fff;--surface:#fafaf8;--border:#e2e0db;--border-strong:#c8c5be;
+  --text:#1a1916;--text2:#6b6860;--text3:#a09d98;--accent-light:#f0ede8;
+  --green:#166534;--green-bg:#f0fdf4;--green-border:#bbf7d0;
+  --amber:#92400e;--amber-bg:#fffbeb;--amber-border:#fde68a;
+  --red:#991b1b;--red-bg:#fef2f2;--red-border:#fecaca;
+  --blue:#1e3a8a;--blue-bg:#eff6ff;--blue-border:#bfdbfe;
+  --font:'Instrument Sans',system-ui,sans-serif;
+  --radius:10px;--radius-lg:16px;
+  --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.08),0 2px 4px rgba(0,0,0,0.04);
+}
+html{font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;line-height:1.5}
+.app{display:flex;flex-direction:column;min-height:100vh}
+
+/* HEADER */
+.header{background:var(--white);border-bottom:1px solid var(--border);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow)}
+.logo{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--text)}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--text)}
+.header-right{display:flex;align-items:center;gap:8px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:livepulse 2s infinite}
+.header-label{font-size:13px;color:var(--text2)}
+
+/* STEP NAV */
+.step-bar{background:var(--white);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.step-bar::-webkit-scrollbar{display:none}
+.step-bar-inner{display:flex;min-width:max-content}
+.sb{flex:none;padding:14px 20px;font-size:13px;font-weight:500;color:var(--text3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all 0.15s;display:flex;align-items:center;gap:8px}
+.sb.active{color:var(--text);border-bottom-color:var(--text)}
+.sb.done{color:var(--text2)}
+.sb-num{width:20px;height:20px;border-radius:50%;background:var(--border);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s;flex-shrink:0}
+.sb.active .sb-num{background:var(--text);color:var(--white)}
+.sb.done .sb-num{background:var(--green);color:var(--white)}
+
+/* MAIN */
+.main{flex:1;padding:24px 20px;max-width:660px;margin:0 auto;width:100%}
+.prog{display:flex;gap:6px;margin-bottom:24px}
+.pg{flex:1;height:3px;border-radius:999px;background:var(--border);transition:all 0.3s}
+.pg.done{background:var(--text2)}.pg.active{background:var(--text)}
+.step{display:none}.step.active{display:block;animation:fadein 0.2s ease}
+
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes vp{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-4px)}}
+
+/* MODE TOGGLE */
+.mode-toggle{display:flex;gap:0;margin-bottom:20px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:4px;position:relative}
+.mode-btn{flex:1;padding:10px 14px;font-size:14px;font-weight:500;border:none;border-radius:7px;background:none;color:var(--text2);cursor:pointer;font-family:var(--font);transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.mode-btn.on{background:var(--text);color:var(--white)}
+.mode-icon{font-size:15px}
+.mode-new-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);letter-spacing:0.04em}
+.mode-btn.on .mode-new-badge{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);border-color:rgba(255,255,255,0.2)}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card-label{font-size:11px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* FIELDS */
+.field{margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;padding:12px 14px;font-size:15px;font-family:var(--font);border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);outline:none;transition:border-color 0.15s,background 0.15s;-webkit-appearance:none;appearance:none}
+.field input:focus,.field textarea:focus{border-color:var(--text);background:var(--white)}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23a09d98' d='M7 9L2 4h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px;cursor:pointer}
+.field select:focus{border-color:var(--text);background:var(--white)}
+.field textarea{resize:vertical;min-height:88px;line-height:1.6}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.help-text{font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:16px}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;letter-spacing:0.02em}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;border-radius:var(--radius);font-size:15px;font-weight:500;font-family:var(--font);cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--text);transition:all 0.15s;-webkit-appearance:none}
+.btn:hover{background:var(--surface);border-color:var(--border-strong)}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:var(--text);color:var(--white);border-color:var(--text)}
+.btn-primary:hover{background:#333;border-color:#333}
+.btn-primary:disabled{opacity:0.45;cursor:not-allowed;transform:none}
+.btn-full{width:100%}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+
+/* VOICE */
+.voice-bar{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all 0.15s;margin-top:10px;font-family:var(--font)}
+.voice-bar:hover{border-color:var(--border-strong);background:var(--white)}
+.voice-bar.rec{border-color:var(--red-border);background:var(--red-bg)}
+.vdot{width:9px;height:9px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.voice-bar.rec .vdot{background:var(--red);animation:vp 0.7s infinite}
+.voice-bar-lbl{font-size:13px;color:var(--text2);flex:1}
+.voice-bar.rec .voice-bar-lbl{color:var(--red)}
+.voice-transcript{display:none;margin-top:8px;font-size:14px;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;line-height:1.6}
+.voice-transcript.show{display:block}
+
+/* CHAT */
+.chat-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow)}
+.chat-messages{padding:20px;min-height:300px;max-height:440px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth}
+.msg{display:flex;gap:10px;animation:msgIn 0.2s ease}
+.msg.ai{align-items:flex-start}
+.msg.user{align-items:flex-start;flex-direction:row-reverse}
+.msg-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;margin-top:2px}
+.msg.ai .msg-avatar{background:var(--text);color:var(--white)}
+.msg.user .msg-avatar{background:var(--accent-light);color:var(--text2);border:1px solid var(--border)}
+.msg-bubble{max-width:82%;padding:12px 16px;border-radius:var(--radius-lg);font-size:15px;line-height:1.6}
+.msg.ai .msg-bubble{background:var(--surface);border:1px solid var(--border);color:var(--text);border-top-left-radius:4px}
+.msg.user .msg-bubble{background:var(--text);color:var(--white);border-top-right-radius:4px}
+.typing-indicator{display:flex;gap:10px;align-items:flex-start}
+.typing-dots{display:flex;gap:4px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);border-top-left-radius:4px}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--text3);animation:bounce 1.2s infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+.chat-input-area{border-top:1px solid var(--border);padding:12px 16px;background:var(--white)}
+.chat-input-row{display:flex;gap:10px;align-items:flex-end}
+.chat-input{flex:1;padding:11px 14px;font-size:15px;font-family:var(--font);border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);outline:none;transition:border-color 0.15s;resize:none;min-height:44px;max-height:110px;line-height:1.5}
+.chat-input:focus{border-color:var(--text);background:var(--white)}
+.chat-send{width:44px;height:44px;border-radius:var(--radius);border:none;background:var(--text);color:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;font-size:18px}
+.chat-send:hover{background:#333}
+.chat-send:disabled{opacity:0.4;cursor:not-allowed}
+
+/* WORK LOG */
+.worklog-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:22px 20px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--surface)}
+.worklog-zone:hover{border-color:var(--border-strong);background:var(--white)}
+.worklog-zone.loaded{border-style:solid;border-color:var(--green-border);background:var(--green-bg);cursor:default}
+.wl-list{margin-top:12px;display:none}
+.wl-list.show{display:block}
+.photo-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.photo-thumb{width:64px;height:64px;border-radius:var(--radius);object-fit:cover;border:1.5px solid var(--border);cursor:pointer;transition:opacity 0.15s}
+.photo-thumb:hover{opacity:0.75}
+.photo-add{width:64px;height:64px;border-radius:var(--radius);border:2px dashed var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;color:var(--text3);transition:all 0.15s;flex-shrink:0}
+.photo-add:hover{border-color:var(--border-strong);background:var(--white);color:var(--text2)}
+.wl-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;font-size:13px}
+.wl-remove{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:2px 6px}
+.wl-remove:hover{color:var(--red)}
+
+/* SPINNER */
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0}
+
+/* QUOTE LINES */
+.ql-head{display:grid;grid-template-columns:minmax(0,1fr) 70px 100px 36px;gap:8px;font-size:12px;font-weight:600;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:10px}
+.ql{display:grid;grid-template-columns:minmax(0,1fr) 70px 100px 36px;gap:8px;align-items:center;margin-bottom:8px}
+.ql input{padding:10px 12px;font-size:14px;font-family:var(--font);border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);outline:none;width:100%;-webkit-appearance:none;transition:border-color 0.15s}
+.ql input:focus{border-color:var(--text);background:var(--white)}
+.ql-del{background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3);padding:6px;line-height:1;border-radius:6px;transition:all 0.1s}
+.ql-del:hover{color:var(--red);background:var(--red-bg)}
+.total-bar{display:flex;justify-content:space-between;align-items:center;background:var(--accent-light);border-radius:var(--radius);padding:16px 18px;margin-top:14px;border:1px solid var(--border)}
+.total-num{font-size:28px;font-weight:600;color:var(--text);letter-spacing:-0.02em}
+.ai-rationale{background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:var(--radius);padding:14px 16px;margin-top:14px;font-size:13px;color:var(--blue);line-height:1.7;display:none}
+.ai-rationale.show{display:block}
+
+/* KENT PANEL */
+.kent-card{border:1.5px dashed var(--amber-border);background:var(--amber-bg)}
+.kent-table{width:100%;border-collapse:collapse;font-size:13px}
+.kent-table th{font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber);padding:9px 12px;text-align:left;background:rgba(251,191,36,0.12);border-bottom:1px solid var(--amber-border)}
+.kent-table th:last-child{text-align:right}
+.kent-table td{padding:9px 12px;border-bottom:1px solid var(--amber-border);color:var(--text2)}
+.kent-table td:last-child{text-align:right;font-weight:600;color:var(--text)}
+.kent-table tr:last-child td{border-bottom:none}
+
+/* PHONE */
+.phone-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;display:flex;justify-content:center;margin-bottom:16px}
+.phone{width:100%;max-width:340px;background:var(--white);border:1.5px solid var(--border);border-radius:24px;padding:24px 20px;box-shadow:var(--shadow-md)}
+.phone-notch{width:60px;height:4px;background:var(--border);border-radius:999px;margin:0 auto 20px}
+.pq-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px;table-layout:fixed}
+.pq-table td{padding:9px 0;border-bottom:1px solid var(--border);word-break:break-word;color:var(--text2)}
+.pq-table td:last-child{text-align:right;font-weight:600;color:var(--text);width:80px;word-break:normal}
+.pq-table tr:last-child td{border-bottom:none}
+.phone-total{display:flex;justify-content:space-between;align-items:center;background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px}
+.phone-total-label{font-size:13px;color:var(--green);font-weight:500}
+.phone-total-num{font-size:22px;font-weight:600;color:var(--green)}
+.approval-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.appr{padding:14px;border-radius:var(--radius);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:all 0.15s}
+.appr-yes{background:var(--text);color:var(--white)}.appr-yes:hover{background:#333}
+.appr-no{background:var(--surface);border:1.5px solid var(--border);color:var(--text)}
+
+/* DELIVERY */
+.del-opt{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:10px;cursor:pointer;transition:all 0.15s;background:var(--white)}
+.del-opt.sel{border-color:var(--green-border);background:var(--green-bg)}
+.del-opt input[type=radio]{width:18px;height:18px;flex-shrink:0;accent-color:var(--text)}
+.del-label{font-size:15px;font-weight:500;color:var(--text);flex:1}
+.del-sub{font-size:13px;color:var(--text2);margin-top:2px}
+
+/* SUCCESS */
+.success{text-align:center;padding:48px 20px}
+.success-ring{width:72px;height:72px;border-radius:50%;border:2px solid var(--green-border);background:var(--green-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px;color:var(--green)}
+.success h2{font-size:22px;font-weight:600;margin-bottom:10px}
+.success p{font-size:15px;color:var(--text2);max-width:300px;margin:0 auto 24px;line-height:1.7}
+
+/* ERROR */
+.error-box{background:var(--red-bg);border:1px solid var(--red-border);border-radius:var(--radius);padding:14px 16px;font-size:14px;color:var(--red);line-height:1.6;margin-bottom:16px;display:none}
+.error-box.show{display:block}
+
+.footer{text-align:center;padding:24px 20px;font-size:13px;color:var(--text3);border-top:1px solid var(--border)}
+.footer a{color:var(--text2);text-decoration:none}
+
+@media(max-width:480px){
+  .main{padding:16px}.card{padding:16px 18px}.row2{grid-template-columns:1fr}
+  .ql-head,.ql{grid-template-columns:minmax(0,1fr) 60px 88px 32px}
+  .btn-row{flex-direction:column}.btn-row .btn{width:100%}
+  .chat-messages{max-height:340px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header class="header">
+  <div class="logo"><span class="logo-dot"></span>Tradeflo AI</div>
+  <div class="header-right">
+    <div class="live-dot"></div>
+    <span class="header-label">Quote Builder</span>
+  </div>
+</header>
+
+<nav class="step-bar">
+  <div class="step-bar-inner">
+    <button class="sb active" id="nav0"><span class="sb-num">1</span>Job intake</button>
+    <button class="sb" id="nav1"><span class="sb-num">2</span>Review quote</button>
+    <button class="sb" id="nav2"><span class="sb-num">3</span>Client preview</button>
+    <button class="sb" id="nav3"><span class="sb-num">4</span>Send</button>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="prog">
+    <div class="pg active" id="pg0"></div>
+    <div class="pg" id="pg1"></div>
+    <div class="pg" id="pg2"></div>
+    <div class="pg" id="pg3"></div>
+  </div>
+
+  <!-- ── STEP 1: INTAKE ── -->
+  <div class="step active" id="step0">
+
+    <!-- CUSTOMER DETAILS (shared by both modes) -->
+    <div class="card">
+      <div class="card-label">Customer details</div>
+      <div class="row2">
+        <div class="field"><label>First name</label><input id="fname" placeholder="First name"/></div>
+        <div class="field"><label>Last name</label><input id="lname" placeholder="Last name"/></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Email</label><input id="cemail" type="email" placeholder="customer@email.com"/></div>
+        <div class="field"><label>Phone</label><input id="cphone" placeholder="902-555-0000"/></div>
+      </div>
+    </div>
+
+    <!-- MODE TOGGLE -->
+    <div class="mode-toggle">
+      <button class="mode-btn on" id="mode-chat">
+        <span class="mode-icon">&#127908;</span> Chat with AI
+        <span class="mode-new-badge">NEW</span>
+      </button>
+      <button class="mode-btn" id="mode-form">
+        <span class="mode-icon">&#128203;</span> Quick form
+      </button>
+    </div>
+
+    <!-- ── CHAT MODE ── -->
+    <div id="chat-mode">
+      <div class="chat-wrap">
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-area">
+          <div class="voice-bar" id="chat-voice-btn">
+            <div class="vdot"></div>
+            <span class="voice-bar-lbl" id="chat-voice-lbl">Tap to speak your answer</span>
+          </div>
+          <div class="chat-input-row" style="margin-top:10px">
+            <textarea class="chat-input" id="chat-input" rows="1" placeholder="Or type here..."></textarea>
+            <button class="chat-send" id="chat-send-btn">&#8593;</button>
+          </div>
+        </div>
+      </div>
+      <div class="error-box" id="chat-error"></div>
+      <button class="btn btn-primary btn-full" id="btn-build-chat" style="display:none">Build quote from this conversation &rarr;</button>
+    </div>
+
+    <!-- ── FORM MODE ── -->
+    <div id="form-mode" style="display:none">
+      <div class="card">
+        <div class="card-label">Job details</div>
+        <div class="field"><label>Job type</label>
+          <select id="jobtype">
+            <option>Exterior siding replacement</option>
+            <option>Roofing — asphalt shingles</option>
+            <option>Roofing — metal</option>
+            <option>Deck build</option>
+            <option>Foundation repair</option>
+            <option>Window &amp; door install</option>
+            <option>Plumbing — residential service</option>
+            <option>Electrical — panel upgrade</option>
+            <option>Basement renovation</option>
+            <option>Kitchen renovation</option>
+            <option>Bathroom renovation</option>
+            <option>Custom</option>
+          </select>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Property type</label>
+            <select id="proptype"><option>Residential</option><option>Commercial</option><option>Multi-unit</option></select>
+          </div>
+          <div class="field"><label>Approx. sq ft</label><input id="sqft" placeholder="e.g. 1,400"/></div>
+        </div>
+        <div class="field"><label>Scope &amp; notes</label>
+          <textarea id="scope" placeholder="Describe the job — materials, access, anything relevant..."></textarea>
+        </div>
+        <div class="field"><label>Site address</label><input id="address" placeholder="123 Main St, Halifax NS"/></div>
+        <div class="field"><label>Preferred start window</label><input id="startwin" placeholder="e.g. Mid May 2026"/></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Or describe by voice</div>
+        <p class="help-text">Tap and describe the job naturally. AI extracts the details into the form.</p>
+        <div class="voice-bar" id="form-voice-btn">
+          <div class="vdot"></div>
+          <span class="voice-bar-lbl" id="form-voice-lbl">Tap to record job details</span>
+        </div>
+        <div class="voice-transcript" id="form-voice-transcript"></div>
+      </div>
+      <div class="error-box" id="form-error"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-full" id="btn-build-form">Generate AI quote &rarr;</button>
+      </div>
+    </div>
+
+    <!-- SITE PHOTOS (shared) -->
+    <div class="card" style="margin-top:4px">
+      <div class="card-label">
+        Site photos
+        <span class="badge badge-blue" id="photo-badge" style="display:none">Added</span>
+      </div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">Add photos of the job site to improve quote accuracy. AI will factor in what it sees.</p>
+      <div class="photo-strip" id="photo-strip">
+        <div class="photo-add" id="photo-add-btn" onclick="document.getElementById('photo-input').click()">+</div>
+      </div>
+      <input type="file" id="photo-input" accept="image/*" multiple style="display:none"/>
+    </div>
+
+    <!-- WORK LOG CALIBRATION (shared) -->
+    <div class="card" style="margin-top:4px">
+      <div class="card-label">
+        Work log calibration
+        <span class="badge badge-green" id="wl-badge" style="display:none">Active</span>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 16px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--radius)">
+        <div style="width:9px;height:9px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:4px;animation:livepulse 2s infinite"></div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--green);margin-bottom:4px">AI calibrated from your job history</div>
+          <div style="font-size:13px;color:var(--green);line-height:1.6;opacity:0.85">Previous invoices and work logs applied. Pricing calibrated to your real numbers — not industry averages.</div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="worklog-zone" id="wl-zone" onclick="document.getElementById('wl-input').click()">
+          <div style="font-size:18px;margin-bottom:6px;color:var(--text3)">&#8679;</div>
+          <div style="font-size:14px;color:var(--text2);font-weight:500">Upload work logs</div>
+          <div style="font-size:13px;color:var(--text3);margin-top:3px">PDF invoices, quotes, or CSV</div>
+        </div>
+        <input type="file" id="wl-input" accept=".pdf,.csv,.txt,.xlsx" multiple style="display:none"/>
+        <div class="wl-list" id="wl-list"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── STEP 2: QUOTE REVIEW ── -->
+  <div class="step" id="step1">
+    <div class="card" id="quote-loading" style="display:none">
+      <div style="display:flex;align-items:center;gap:14px;padding:4px 0">
+        <div class="spinner"></div>
+        <span style="font-size:15px;color:var(--text2)" id="loading-text">Building your quote...</span>
+      </div>
+    </div>
+
+    <div id="quote-body" style="display:none">
+      <div class="card">
+        <div class="card-label">
+          Line items
+          <span class="badge badge-green" id="calib-badge" style="display:none">Work log calibrated</span>
+          <span class="badge badge-blue">AI generated</span>
+        </div>
+        <div class="ql-head">
+          <span>Description</span>
+          <span style="text-align:center">Qty</span>
+          <span style="text-align:right">Price</span>
+          <span></span>
+        </div>
+        <div id="line-items"></div>
+        <button class="btn" id="btn-addline" style="font-size:13px;padding:9px 16px;margin-top:8px">+ Add line</button>
+        <div class="total-bar">
+          <span style="font-size:14px;font-weight:500;color:var(--text2)">Estimated total</span>
+          <span class="total-num" id="total">$0</span>
+        </div>
+      </div>
+
+      <div class="ai-rationale" id="ai-rationale"></div>
+
+      <!-- KENT PRICING PANEL -->
+      <div class="card kent-card">
+        <div class="card-label" style="border-bottom-color:var(--amber-border);color:var(--amber)">
+          Supplier pricing &mdash; Kent Building Supplies
+          <span class="badge badge-amber">Coming soon</span>
+        </div>
+        <p style="font-size:13px;color:var(--amber);line-height:1.6;margin-bottom:14px;opacity:0.9">Live material pricing from Kent will be pulled automatically each day and applied directly to your quotes.</p>
+        <table class="kent-table">
+          <thead><tr><th>Material</th><th style="text-align:right">Unit</th><th style="text-align:right">Price</th></tr></thead>
+          <tbody>
+            <tr><td>James Hardie HardiePlank Siding</td><td style="text-align:right;color:var(--text3)">lin ft</td><td>$4.87</td></tr>
+            <tr><td>OSB Sheathing 7/16 in. 4x8</td><td style="text-align:right;color:var(--text3)">sheet</td><td>$22.47</td></tr>
+            <tr><td>Tyvek HomeWrap 9ft x 100ft</td><td style="text-align:right;color:var(--text3)">roll</td><td>$87.50</td></tr>
+            <tr><td>2x6 KD SPF Framing Lumber 12ft</td><td style="text-align:right;color:var(--text3)">each</td><td>$11.47</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:12px;color:var(--amber);margin-top:12px;opacity:0.75">Pending supplier integration. Live sync applies automatically once partnership is confirmed.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Notes on quote</div>
+        <div class="field"><textarea id="quote-notes">Quote valid for 30 days. Pricing assumes standard site access. Final scope confirmed on-site before work begins.</textarea></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Edit with voice</div>
+        <p class="help-text">Say something like "Remove the scaffolding line" or "Change labour to $2,800"</p>
+        <div class="voice-bar" id="edit-voice-btn">
+          <div class="vdot"></div>
+          <span class="voice-bar-lbl" id="edit-voice-lbl">Tap to record edit</span>
+        </div>
+        <div class="voice-transcript" id="edit-voice-transcript"></div>
+      </div>
+
+      <div class="error-box" id="quote-error"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-to-preview">Send to client for approval &rarr;</button>
+        <button class="btn" id="btn-back-intake">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: CLIENT PREVIEW ── -->
+  <div class="step" id="step2">
+    <p class="help-text">This is exactly what your client sees on their phone. One tap to approve and it goes straight to them.</p>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <span style="font-size:12px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Quote ready</span>
+          <span class="badge badge-amber">Pending approval</span>
+        </div>
+        <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:2px">Your Business</div>
+        <div style="font-size:12px;color:var(--text3)" id="preview-ref">Quote #2026-001</div>
+        <div style="font-size:13px;color:var(--text2);margin:12px 0 16px;padding:12px;background:var(--surface);border-radius:var(--radius);line-height:1.6;border:1px solid var(--border)" id="preview-customer">Customer</div>
+        <table class="pq-table" id="pq-table"></table>
+        <div class="phone-total">
+          <span class="phone-total-label">Total estimate</span>
+          <span class="phone-total-num" id="pq-total">$0</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.6" id="preview-notes">Quote valid 30 days.</div>
+        <div class="approval-grid">
+          <button class="appr appr-yes" id="btn-approve">Approve &amp; send</button>
+          <button class="appr appr-no" id="btn-req-change">Request changes</button>
+        </div>
+      </div>
+    </div>
+    <div id="change-box" style="display:none">
+      <div class="card">
+        <div class="card-label">Client change request</div>
+        <div class="field"><textarea id="change-text" placeholder="Describe what needs to change..."></textarea></div>
+        <div class="btn-row"><button class="btn btn-primary" id="btn-sub-change">Submit change request</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 4: SEND ── -->
+  <div class="step" id="step3">
+    <div id="send-screen">
+      <div class="card">
+        <div class="card-label">Approved &mdash; ready to send</div>
+        <p class="help-text">Quote approved. Choose how to deliver it.</p>
+        <div class="del-opt sel" id="del0"><input type="radio" name="del" checked/><div><div class="del-label">Email</div><div class="del-sub" id="del-email-sub">Customer email</div></div><span class="badge badge-green">Auto-matched</span></div>
+        <div class="del-opt" id="del1"><input type="radio" name="del"/><div><div class="del-label">SMS</div><div class="del-sub" id="del-sms-sub">Customer phone</div></div></div>
+        <div class="del-opt" id="del2"><input type="radio" name="del"/><div><div class="del-label">Email + SMS</div><div class="del-sub">Both &mdash; recommended for high-value jobs</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Personal note (optional)</div>
+        <div class="field"><textarea id="personal-note" placeholder="e.g. Great speaking with you. Looking forward to getting started."></textarea></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-primary btn-full" id="btn-send">Send quote to customer &rarr;</button></div>
+    </div>
+    <div id="sent-screen" style="display:none" class="success">
+      <div class="success-ring">&#10003;</div>
+      <h2>Quote sent.</h2>
+      <p id="sent-msg">Your customer has received their quote.</p>
+      <button class="btn btn-primary" id="btn-reset">Start a new quote</button>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  <a href="https://tradefloai.ca" target="_blank">Tradeflo AI</a> &nbsp;&middot;&nbsp; zane@tradefloai.ca &nbsp;&middot;&nbsp; 506-259-0537
+</footer>
+</div>
+
+<script>
+var lines = [];
+var sitePhotos = [];
+var workLogs = [];
+var conversationHistory = [];
+var collectedJobData = {};
+var currentMode = 'chat';
+var voiceRec = null;
+var isRecording = false;
+var quoteReady = false;
+var quoteNum = 'QTE-' + Date.now().toString().slice(-6);
+var loadingInterval = null;
+
+// ── NAV ──────────────────────────────────────────────────────
+function goTo(n) {
+  document.querySelectorAll('.step').forEach(function(s,i){ s.classList.toggle('active',i===n); });
+  ['nav0','nav1','nav2','nav3'].forEach(function(id,i){
+    var b=document.getElementById(id), num=b.querySelector('.sb-num');
+    b.classList.remove('active','done');
+    if(i===n){b.classList.add('active');num.textContent=String(i+1);}
+    else if(i<n){b.classList.add('done');num.textContent='\u2713';}
+    else{num.textContent=String(i+1);}
+  });
+  ['pg0','pg1','pg2','pg3'].forEach(function(id,i){
+    var p=document.getElementById(id);
+    p.classList.remove('active','done');
+    if(i===n)p.classList.add('active'); else if(i<n)p.classList.add('done');
+  });
+  if(n===2) renderPreview();
+  window.scrollTo(0,0);
+}
+
+// ── MODE SWITCH ───────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-chat').className = 'mode-btn' + (mode==='chat'?' on':'');
+  document.getElementById('mode-form').className = 'mode-btn' + (mode==='form'?' on':'');
+  document.getElementById('chat-mode').style.display = mode==='chat' ? 'block' : 'none';
+  document.getElementById('form-mode').style.display = mode==='form' ? 'block' : 'none';
+}
+
+// ── VOICE HELPER ──────────────────────────────────────────────
+function makeVoiceBtn(btnId, lblId, onResult, transcriptId) {
+  var btn = document.getElementById(btnId);
+  var lbl = document.getElementById(lblId);
+  var transcript = transcriptId ? document.getElementById(transcriptId) : null;
+
+  if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    btn.style.display='none'; return;
+  }
+
+  btn.onclick = function() {
+    if(isRecording && voiceRec) { voiceRec.stop(); return; }
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    voiceRec = new SR();
+    voiceRec.continuous = false;
+    voiceRec.interimResults = true;
+    voiceRec.lang = 'en-CA';
+    var final = '';
+
+    voiceRec.onresult = function(e) {
+      var interim='';
+      for(var i=e.resultIndex;i<e.results.length;i++){
+        if(e.results[i].isFinal) final+=e.results[i][0].transcript;
+        else interim+=e.results[i][0].transcript;
+      }
+      var preview=(final+interim).trim();
+      lbl.textContent = preview || 'Listening...';
+      if(transcript){ transcript.className='voice-transcript show'; transcript.textContent=preview; }
+    };
+
+    voiceRec.onend = function() {
+      isRecording=false; btn.classList.remove('rec');
+      lbl.textContent = 'Tap to speak';
+      if(final.trim() && onResult) onResult(final.trim());
+    };
+
+    voiceRec.onerror = function() {
+      isRecording=false; btn.classList.remove('rec');
+      lbl.textContent = 'Tap to speak';
+    };
+
+    isRecording=true; btn.classList.add('rec');
+    lbl.textContent='Listening \u2014 tap to stop';
+    final='';
+    voiceRec.start();
+  };
+}
+
+// ── WORK LOGS ─────────────────────────────────────────────────
+function handleWorkLogs(files) {
+  var zone=document.getElementById('wl-zone');
+  var list=document.getElementById('wl-list');
+  var badge=document.getElementById('wl-badge');
+
+  Array.from(files).forEach(function(f){
+    workLogs.push(f);
+    var item=document.createElement('div'); item.className='wl-item';
+    item.innerHTML='<span style="font-size:13px;font-weight:500">'+f.name+'</span>'+
+      '<span style="font-size:12px;color:var(--green)">&#10003; Ready</span>'+
+      '<button class="wl-remove" data-name="'+f.name+'">&times;</button>';
+    list.appendChild(item);
+  });
+
+  if(workLogs.length>0){
+    zone.className='worklog-zone loaded'; zone.onclick=null;
+    zone.innerHTML='<div style="font-size:18px;margin-bottom:6px;color:var(--green)">&#10003;</div>'+
+      '<div style="font-size:14px;color:var(--green);font-weight:600">'+workLogs.length+' work log'+(workLogs.length>1?'s':'')+' uploaded</div>'+
+      '<div style="font-size:13px;color:var(--green);margin-top:3px;opacity:0.8">AI calibrating to your real numbers</div>';
+    list.className='wl-list show'; badge.style.display='inline-flex';
+    document.getElementById('calib-badge').style.display='inline-flex';
+  }
+
+  list.querySelectorAll('.wl-remove').forEach(function(btn){
+    btn.onclick=function(e){
+      e.stopPropagation();
+      var name=this.getAttribute('data-name');
+      workLogs=workLogs.filter(function(f){return f.name!==name;});
+      this.closest('.wl-item').remove();
+      if(workLogs.length===0){
+        zone.className='worklog-zone';
+        zone.innerHTML='<div style="font-size:18px;margin-bottom:6px;color:var(--text3)">&#8679;</div>'+
+          '<div style="font-size:14px;color:var(--text2);font-weight:500">Upload work logs</div>'+
+          '<div style="font-size:13px;color:var(--text3);margin-top:3px">PDF invoices, quotes, or CSV</div>';
+        zone.onclick=function(){document.getElementById('wl-input').click();};
+        list.className='wl-list'; badge.style.display='none';
+        document.getElementById('calib-badge').style.display='none';
+      }
+    };
+  });
+}
+
+// ── SITE PHOTOS ──────────────────────────────────────────────
+function compressImage(file, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var image = new Image();
+    image.onload = function() {
+      var canvas = document.createElement('canvas');
+      var MAX = 1024;
+      var w = image.width, h = image.height;
+      if(w > h) { if(w > MAX){ h = Math.round(h * MAX / w); w = MAX; } }
+      else { if(h > MAX){ w = Math.round(w * MAX / h); h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(image, 0, 0, w, h);
+      var compressed = canvas.toDataURL('image/jpeg', 0.75);
+      callback(compressed.split(',')[1], 'image/jpeg');
+    };
+    image.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleSitePhotos(files) {
+  var strip = document.getElementById('photo-strip');
+  var badge = document.getElementById('photo-badge');
+  Array.from(files).forEach(function(file) {
+    if(sitePhotos.length >= 4) return;
+    compressImage(file, function(b64, mime) {
+      sitePhotos.push({ b64: b64, mime: mime, name: file.name });
+      var img = document.createElement('img');
+      img.src = 'data:' + mime + ';base64,' + b64;
+      img.className = 'photo-thumb';
+      img.title = 'Click to remove';
+      var idx = sitePhotos.length - 1;
+      img.onclick = function() {
+        sitePhotos.splice(idx, 1);
+        img.remove();
+        if(sitePhotos.length === 0) badge.style.display = 'none';
+      };
+      strip.insertBefore(img, document.getElementById('photo-add-btn'));
+      badge.style.display = 'inline-flex';
+      if(sitePhotos.length >= 4) document.getElementById('photo-add-btn').style.display = 'none';
+    });
+  });
+}
+
+// ── CHAT ─────────────────────────────────────────────────────
+function addMsg(role, text) {
+  var msgs=document.getElementById('chat-messages');
+  var div=document.createElement('div'); div.className='msg '+role;
+  var av=document.createElement('div'); av.className='msg-avatar';
+  av.textContent=role==='ai'?'AI':'You';
+  var bub=document.createElement('div'); bub.className='msg-bubble';
+  bub.textContent=text;
+  div.appendChild(av); div.appendChild(bub);
+  msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight;
+  conversationHistory.push({role:role==='ai'?'assistant':'user', content:text});
+}
+
+function showTyping() {
+  var msgs=document.getElementById('chat-messages');
+  var div=document.createElement('div'); div.className='typing-indicator'; div.id='typing-ind';
+  var av=document.createElement('div'); av.className='msg-avatar';
+  av.style.cssText='background:var(--text);color:var(--white);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;margin-top:2px';
+  av.textContent='AI';
+  var dots=document.createElement('div'); dots.className='typing-dots';
+  dots.innerHTML='<span></span><span></span><span></span>';
+  div.appendChild(av); div.appendChild(dots);
+  msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight;
+}
+
+function removeTyping(){var t=document.getElementById('typing-ind');if(t)t.remove();}
+function setChatDisabled(d){document.getElementById('chat-input').disabled=d;document.getElementById('chat-send-btn').disabled=d;}
+
+function sendChat(text) {
+  text=text||document.getElementById('chat-input').value.trim();
+  if(!text)return;
+  document.getElementById('chat-input').value='';
+  document.getElementById('chat-error').className='error-box';
+  addMsg('user',text); setChatDisabled(true); showTyping();
+  callChatAPI(text);
+}
+
+async function callChatAPI(userText) {
+  var sys='You are a friendly AI estimator for Tradeflo AI, a quoting tool for trades contractors in Atlantic Canada.\n\n'+
+    'Your job: have a short natural conversation to gather job details for an accurate quote.\n\n'+
+    'RULES:\n'+
+    '- After the contractor describes the job, assess if you have enough to quote accurately.\n'+
+    '- If yes: respond with READY_TO_QUOTE followed by a JSON object.\n'+
+    '- If no: ask 1-3 targeted questions in ONE message. Never ask more than 2 rounds.\n'+
+    '- After 2 rounds always output READY_TO_QUOTE.\n'+
+    '- Keep it short and conversational. Busy contractor on their phone.\n'+
+    '- Good questions: sq ft, property type, materials, access, timeline.\n'+
+    '- Never ask for customer name or contact — collected separately.\n\n'+
+    'When ready:\nREADY_TO_QUOTE\n{"jobType":"...","propertyType":"...","sqft":"...","scope":"...","materials":"...","location":"Atlantic Canada","timeline":"..."}';
+
+  try {
+    var resp=await fetch('/api/claude',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,system:sys,messages:conversationHistory.filter(function(m){return m.content;})})
+    });
+    if(!resp.ok) throw new Error('API error '+resp.status);
+    var result=await resp.json();
+    var text=result.content.map(function(c){return c.text||'';}).join('').trim();
+    removeTyping(); setChatDisabled(false);
+
+    if(text.indexOf('READY_TO_QUOTE')>-1){
+      var match=text.match(/\{[\s\S]*\}/);
+      if(match){try{collectedJobData=JSON.parse(match[0]);}catch(e){collectedJobData={};}}
+      addMsg('ai','I have everything I need \u2014 your quote is ready to build.');
+      setTimeout(function(){
+        document.getElementById('btn-build-chat').style.display='block';
+        document.getElementById('btn-build-chat').scrollIntoView({behavior:'smooth',block:'nearest'});
+      },400);
+      quoteReady=true;
+    } else {
+      addMsg('ai',text);
+    }
+  } catch(err) {
+    removeTyping(); setChatDisabled(false);
+    document.getElementById('chat-error').textContent='Connection error: '+(err.message||'Please try again.');
+    document.getElementById('chat-error').className='error-box show';
+  }
+}
+
+// ── BUILD QUOTE ───────────────────────────────────────────────
+async function buildQuote(isChat) {
+  goTo(1);
+  document.getElementById('quote-loading').style.display='block';
+  document.getElementById('quote-body').style.display='none';
+  document.getElementById('quote-error').className='error-box';
+
+  var loadMsgs=['Building your quote...','Pricing materials and labour...','Applying your rates...','Almost done...'];
+  var li=0;
+  loadingInterval=setInterval(function(){
+    li=(li+1)%loadMsgs.length;
+    var el=document.getElementById('loading-text');
+    if(el) el.textContent=loadMsgs[li];
+  },1400);
+
+  var prompt='';
+  if(isChat){
+    var convo=conversationHistory.map(function(m){return (m.role==='user'?'Contractor: ':'AI: ')+m.content;}).join('\n');
+    prompt='You are an expert estimator for trades businesses in Atlantic Canada. Generate an accurate quote based on this conversation.\n\nCONVERSATION:\n'+convo+'\n\nSUMMARY:\n'+JSON.stringify(collectedJobData)+'\n\n';
+  } else {
+    var d={jobType:document.getElementById('jobtype').value,propertyType:document.getElementById('proptype').value,sqft:document.getElementById('sqft').value,scope:document.getElementById('scope').value,address:document.getElementById('address').value,startWindow:document.getElementById('startwin').value,voiceNote:document.getElementById('form-voice-transcript').textContent};
+    collectedJobData=d;
+    prompt='You are an expert estimator for trades businesses in Atlantic Canada. Generate an accurate quote for this job.\n\nJOB DETAILS:\n'+JSON.stringify(d)+'\n\n';
+  }
+
+    var hasLogs=workLogs.length>0;
+  var hasPhotos=sitePhotos.length>0;
+  prompt+=(hasLogs?'The contractor has uploaded '+workLogs.length+' work log file(s). Calibrate pricing to their real rates.':'Use standard Atlantic Canada market rates.');
+  if(hasPhotos) prompt+=' The contractor has also provided '+sitePhotos.length+' site photo(s). Use what you can see in the images to improve quote accuracy.';
+  prompt+='\n\nRespond ONLY with valid JSON:\n{"lineItems":[{"description":"...","quantity":1,"unitPrice":0,"total":0}],"total":0,"rationale":"Brief pricing explanation","notes":"Important conditions"}';
+
+  try {
+    var msgContent = sitePhotos.length > 0
+      ? sitePhotos.map(function(p){ return {type:'image',source:{type:'base64',media_type:p.mime,data:p.b64}}; }).concat([{type:'text',text:prompt}])
+      : prompt;
+    var resp=await fetch('/api/claude',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:msgContent}]})
+    });
+    clearInterval(loadingInterval);
+    if(!resp.ok) throw new Error('API error '+resp.status);
+    var result=await resp.json();
+    var raw=result.content.map(function(c){return c.text||'';}).join('');
+    var clean=raw.replace(/```json|```/g,'').trim();
+    var data=JSON.parse(clean);
+
+    lines=data.lineItems.map(function(item){
+      return {description:item.description,quantity:item.quantity||1,unitPrice:item.unitPrice||0,total:item.total||(item.quantity||1)*(item.unitPrice||0)};
+    });
+
+    document.getElementById('quote-loading').style.display='none';
+    renderLines();
+
+    if(data.rationale){
+      var rat=document.getElementById('ai-rationale');
+      rat.textContent='\uD83D\uDCA1 '+data.rationale;
+      rat.className='ai-rationale show';
+    }
+    if(data.notes){
+      document.getElementById('quote-notes').value=data.notes+'\n\n'+document.getElementById('quote-notes').value;
+    }
+    document.getElementById('quote-body').style.display='block';
+
+  } catch(err) {
+    clearInterval(loadingInterval);
+    document.getElementById('quote-loading').style.display='none';
+    document.getElementById('quote-error').textContent='Could not generate quote: '+(err.message||'Unknown error')+'. Please try again.';
+    document.getElementById('quote-error').className='error-box show';
+    lines=[{description:'Materials',quantity:1,unitPrice:0,total:0},{description:'Labour',quantity:1,unitPrice:0,total:0}];
+    renderLines();
+    document.getElementById('quote-body').style.display='block';
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function renderLines(){
+  var c=document.getElementById('line-items'); c.innerHTML='';
+  lines.forEach(function(l,idx){
+    (function(i){
+      var row=document.createElement('div'); row.className='ql';
+      var i1=document.createElement('input'); i1.value=l.description; i1.onchange=function(){lines[i].description=this.value;};
+      var i2=document.createElement('input'); i2.type='number'; i2.value=l.quantity; i2.style.textAlign='center';
+      i2.onchange=function(){lines[i].quantity=+this.value;lines[i].total=lines[i].quantity*lines[i].unitPrice;updTotal();};
+      var i3=document.createElement('input'); i3.type='number'; i3.value=l.unitPrice; i3.style.textAlign='right';
+      i3.onchange=function(){lines[i].unitPrice=+this.value;lines[i].total=lines[i].quantity*lines[i].unitPrice;updTotal();};
+      var db=document.createElement('button'); db.className='ql-del'; db.textContent='\xD7';
+      db.onclick=function(){lines.splice(i,1);renderLines();};
+      row.appendChild(i1);row.appendChild(i2);row.appendChild(i3);row.appendChild(db);
+      c.appendChild(row);
+    })(idx);
+  });
+  updTotal();
+}
+
+function updTotal(){
+  var t=lines.reduce(function(s,l){return s+(l.total||l.quantity*l.unitPrice);},0);
+  document.getElementById('total').textContent='$'+Math.round(t).toLocaleString();
+}
+
+function renderPreview(){
+  var tb=document.getElementById('pq-table'); tb.innerHTML=''; var t=0;
+  lines.forEach(function(l){
+    var tr=document.createElement('tr');
+    var td1=document.createElement('td'); td1.textContent=l.description;
+    var td2=document.createElement('td'); td2.textContent='$'+Math.round(l.total||l.quantity*l.unitPrice).toLocaleString();
+    tr.appendChild(td1);tr.appendChild(td2);tb.appendChild(tr);
+    t+=(l.total||l.quantity*l.unitPrice);
+  });
+  document.getElementById('pq-total').textContent='$'+Math.round(t).toLocaleString();
+  var fn=document.getElementById('fname').value.trim();
+  var ln=document.getElementById('lname').value.trim();
+  var name=(fn+' '+ln).trim()||'Customer';
+  var job=collectedJobData.jobType||collectedJobData.jobSummary||'Job quote';
+  document.getElementById('preview-customer').innerHTML='For: '+name+'<br>'+job;
+  document.getElementById('preview-ref').textContent=quoteNum;
+  document.getElementById('preview-notes').textContent=document.getElementById('quote-notes').value;
+  document.getElementById('del-email-sub').textContent=document.getElementById('cemail').value||'Customer email';
+  document.getElementById('del-sms-sub').textContent=document.getElementById('cphone').value||'Customer phone';
+}
+
+// ── START CHAT ────────────────────────────────────────────────
+function startChat(){
+  var msgs=document.getElementById('chat-messages');
+  msgs.innerHTML=''; conversationHistory=[];
+  showTyping();
+  setTimeout(function(){
+    removeTyping();
+    addMsg('ai','Hi! Tell me about the job \u2014 what are you quoting?');
+  },500);
+}
+
+// ── WIRE UP ───────────────────────────────────────────────────
+window.onload=function(){
+  startChat();
+
+  // Mode toggle
+  document.getElementById('mode-chat').onclick=function(){setMode('chat');};
+  document.getElementById('mode-form').onclick=function(){setMode('form');};
+
+  // Chat
+  document.getElementById('chat-send-btn').onclick=function(){sendChat();};
+  document.getElementById('chat-input').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}};
+  document.getElementById('chat-input').oninput=function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px';};
+  document.getElementById('btn-build-chat').onclick=function(){buildQuote(true);};
+
+  // Chat voice
+  makeVoiceBtn('chat-voice-btn','chat-voice-lbl',function(text){
+    document.getElementById('chat-input').value=text;
+    sendChat(text);
+  });
+
+  // Form
+  document.getElementById('btn-build-form').onclick=function(){buildQuote(false);};
+  makeVoiceBtn('form-voice-btn','form-voice-lbl',function(text){
+    var s=document.getElementById('scope');
+    s.value=(s.value?s.value+'\n':'')+text;
+  },'form-voice-transcript');
+
+  // Edit voice
+  makeVoiceBtn('edit-voice-btn','edit-voice-lbl',function(text){
+    var t=document.getElementById('edit-voice-transcript');
+    t.className='voice-transcript show';
+    t.textContent='Edit received: "'+text+'" \u2014 in the live app this applies automatically via AI.';
+  },'edit-voice-transcript');
+
+  // Work logs
+  document.getElementById('wl-input').onchange=function(){if(this.files&&this.files.length)handleWorkLogs(this.files);};
+  document.getElementById('photo-input').onchange=function(){if(this.files&&this.files.length)handleSitePhotos(this.files);};
+
+  // Quote step
+  document.getElementById('btn-addline').onclick=function(){lines.push({description:'New item',quantity:1,unitPrice:0,total:0});renderLines();};
+  document.getElementById('btn-to-preview').onclick=function(){goTo(2);};
+  document.getElementById('btn-back-intake').onclick=function(){goTo(0);};
+
+  // Preview step
+  document.getElementById('btn-approve').onclick=function(){goTo(3);};
+  document.getElementById('btn-req-change').onclick=function(){
+    var b=document.getElementById('change-box');
+    b.style.display=b.style.display==='block'?'none':'block';
+  };
+  document.getElementById('btn-sub-change').onclick=function(){
+    alert('Change request submitted. In the live app this notifies the contractor and triggers a revised quote.');
+    document.getElementById('change-box').style.display='none';
+  };
+
+  // Send step
+  document.getElementById('btn-send').onclick=function(){
+    document.getElementById('send-screen').style.display='none';
+    document.getElementById('sent-screen').style.display='block';
+    var fn=document.getElementById('fname').value.trim()||'Your customer';
+    document.getElementById('sent-msg').textContent=fn+' has received their quote. You will be notified when they respond.';
+  };
+  document.getElementById('btn-reset').onclick=function(){
+    lines=[];workLogs=[];sitePhotos=[];conversationHistory=[];collectedJobData={};quoteReady=false;
+    quoteNum='QTE-'+Date.now().toString().slice(-6);
+    document.getElementById('send-screen').style.display='block';
+    document.getElementById('sent-screen').style.display='none';
+    document.getElementById('btn-build-chat').style.display='none';
+    ['fname','lname','cemail','cphone','sqft','address','startwin'].forEach(function(id){document.getElementById(id).value='';});
+    document.getElementById('scope').value='';
+    document.getElementById('form-voice-transcript').className='voice-transcript';
+    document.getElementById('ai-rationale').className='ai-rationale';
+    startChat(); setMode('chat'); goTo(0);
+  };
+
+  // Nav
+  ['nav0','nav1','nav2','nav3'].forEach(function(id,i){
+    document.getElementById(id).onclick=function(){goTo(i);};
+  });
+
+  // Delivery
+  ['del0','del1','del2'].forEach(function(id){
+    document.getElementById(id).onclick=function(){
+      ['del0','del1','del2'].forEach(function(i){document.getElementById(i).classList.remove('sel');});
+      document.getElementById(id).classList.add('sel');
+    };
+  });
+};
+</script>
+</body>
+</html>

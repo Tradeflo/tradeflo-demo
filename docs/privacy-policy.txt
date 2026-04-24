@@ -1,0 +1,61 @@
+This Privacy Policy describes how Tradeflo AI ("we", "our", or "us") collects, uses, and protects information when you use the Tradeflo AI Quote Builder application ("the App"). By using the App you agree to the practices described in this policy.
+ 
+1. Who we are
+Tradeflo AI is a technology company based in Dartmouth, Nova Scotia, Canada. We build AI-powered operations tools for trades and construction businesses. You can reach us at zane@tradefloai.ca or 506-259-0537.
+ 
+2. What information we collect
+
+2.1 Information you provide
+When using the App you may provide the following information:
+–    Contractor account information: name, business name, email address, phone number
+–    Customer information entered for quotes: name, email, phone number, and site address
+–    Job details: job type, property type, square footage, scope of work, and start window
+–    Work log files: PDF invoices, quotes, or CSV files you upload to calibrate pricing
+–    Voice recordings: audio input used for job intake, processed locally and not stored
+ 
+2.2 Information collected automatically
+When you use the App we may collect basic technical information including device type, browser type, and general usage patterns. We do not collect precise location data.
+ 
+3. How we use your information
+We use the information we collect to:
+–    Generate AI-powered quotes based on the job details you provide
+–    Calibrate quote pricing using your uploaded work logs
+–    Deliver quotes to your customers via email or SMS
+–    Store your quote history so you can access previous quotes from your account
+–    Improve the accuracy and performance of the App
+–    Communicate with you about your account, billing, and App updates
+ 
+4. How we share your information
+We do not sell your personal information or your customers’ personal information to any third party. We may share information only in the following circumstances:
+–    Service providers: We use trusted third-party services to operate the App, including Anthropic (AI processing), Supabase (secure data storage), Resend (email delivery), and Twilio (SMS delivery). These providers process data only as necessary to provide their services.
+–    Legal requirements: We may disclose information if required to do so by law or in response to a valid legal request.
+–    Business transfer: In the event of a merger or acquisition, your information may be transferred as part of that transaction. We will notify you before your information becomes subject to a different privacy policy.
+ 
+5. Data storage and security
+Your data is stored on secure servers in Canada where possible, using industry-standard encryption. Work log files are stored securely and associated with your account only. We take reasonable precautions to protect your information from unauthorized access, disclosure, or loss.
+Despite our efforts, no method of transmission over the internet is completely secure. We encourage you to use a strong password and to notify us immediately if you believe your account has been compromised.
+  
+6. Your rights under PIPEDA
+As a Canadian resident you have rights under the Personal Information Protection and Electronic Documents Act (PIPEDA), including the right to:
+–    Access the personal information we hold about you
+–    Request correction of inaccurate or incomplete information
+–    Withdraw consent to our use of your information (subject to legal or contractual restrictions)
+–    Request deletion of your account and associated data
+To exercise any of these rights, contact us at zane@tradefloai.ca. We will respond within 30 days.
+ 
+7. Customer data and your responsibilities
+When you use the App to generate and send quotes you are entering your customers’ personal information (name, email, phone number) into the App. By doing so you represent that you have a legitimate business reason to process this information and that your customers have consented to receiving a quote from you via email or SMS.
+You are responsible for ensuring that your use of your customers’ data complies with applicable privacy laws including PIPEDA and CASL (Canada’s Anti-Spam Legislation).
+ 
+8. Data retention
+We retain your account information and quote history for as long as your account is active. Work log files are retained until you delete them or close your account. If you cancel your subscription we retain your data for 90 days in case you wish to reactivate, after which it is permanently deleted.
+ 
+9. Children’s privacy
+The App is intended for use by business owners and contractors. We do not knowingly collect personal information from anyone under the age of 18.
+ 
+10. Changes to this policy
+We may update this Privacy Policy from time to time. We will notify you of any material changes by email or by a notice within the App at least 14 days before the changes take effect. Your continued use of the App after the effective date constitutes acceptance of the updated policy.
+ 
+11. Contact us
+If you have questions or concerns about this Privacy Policy or our data practices, please contact us:
+
