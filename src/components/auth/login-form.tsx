@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
+import { destinationAfterAuth } from "@/lib/auth/post-auth-destination";
 import {
   loginCredentialsSchema,
   type LoginCredentialsValues,
@@ -50,7 +51,23 @@ export function LoginForm({ redirectTo = "/" }: LoginFormProps) {
       return;
     }
 
-    router.push(redirectTo);
+    let dest = redirectTo;
+    if (dest === "/" || dest === "") {
+      try {
+        const res = await fetch("/api/onboarding/status");
+        if (res.ok) {
+          const data = (await res.json()) as { completed?: boolean };
+          dest = destinationAfterAuth(
+            "/",
+            Boolean(data.completed),
+          );
+        }
+      } catch {
+        /* keep dest */
+      }
+    }
+
+    router.push(dest);
     router.refresh();
   }
 
@@ -136,7 +153,13 @@ export function LoginForm({ redirectTo = "/" }: LoginFormProps) {
           <p className="text-[14px] text-[#6b6860]">
             New to Tradeflo?{" "}
             <Link
-              href={redirectTo && redirectTo !== "/" ? `/signup?next=${encodeURIComponent(redirectTo)}` : "/signup"}
+              href={
+                redirectTo &&
+                redirectTo !== "/" &&
+                redirectTo !== "/onboarding"
+                  ? `/signup?next=${encodeURIComponent(redirectTo)}`
+                  : "/signup"
+              }
               className="font-semibold text-[#1a1916] hover:underline"
             >
               Create an account

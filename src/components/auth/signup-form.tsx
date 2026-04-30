@@ -24,7 +24,7 @@ type SignupFormProps = {
   redirectTo?: string;
 };
 
-export function SignupForm({ redirectTo = "/" }: SignupFormProps) {
+export function SignupForm({ redirectTo = "/onboarding" }: SignupFormProps) {
   const router = useRouter();
   const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -45,11 +45,14 @@ export function SignupForm({ redirectTo = "/" }: SignupFormProps) {
     const supabase = createClient();
     const origin = typeof window !== "undefined" ? window.location.origin : "";
 
+    const confirmNext = encodeURIComponent(redirectTo);
     const { data, error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: {
-        emailRedirectTo: origin ? `${origin}/api/auth/confirm` : undefined,
+        emailRedirectTo: origin
+          ? `${origin}/api/auth/confirm?next=${confirmNext}`
+          : undefined,
       },
     });
 

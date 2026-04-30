@@ -1,5 +1,7 @@
 -- Tradeflo AI — quotes + draft versions (SRS §6 Milestone 1)
 -- Draft create/read/update only; sent/immutable versioning is Milestone 2.
+-- Target M2 schema and rules: docs/MILESTONE_2_SCHEMA.md
+-- M2 migration (columns + immutability trigger): db/quotes_m2.sql — run this or you get "quote_versions.status does not exist"
 -- Apply after db/user_info.sql (same Supabase project).
 
 create table if not exists public.quotes (

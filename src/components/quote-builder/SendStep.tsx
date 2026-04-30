@@ -17,9 +17,11 @@ export function SendStep({ model }: SendStepProps) {
     setDelivery,
     personalNote,
     setPersonalNote,
-    setSentDone,
     sentDone,
     resetFlow,
+    sendQuote,
+    isSending,
+    sendError,
   } = model;
 
   const customerName = fname.trim() || "Your customer";
@@ -105,14 +107,20 @@ export function SendStep({ model }: SendStepProps) {
           />
         </div>
       </div>
+      {sendError ? (
+        <p className="text-sm text-destructive" role="alert">
+          {sendError}
+        </p>
+      ) : null}
       <div className="btn-row">
         <button
           type="button"
           className="btn btn-primary btn-full"
           id="btn-send"
-          onClick={() => setSentDone(true)}
+          disabled={isSending}
+          onClick={() => void sendQuote()}
         >
-          Send quote to customer →
+          {isSending ? "Sending…" : "Send quote to customer →"}
         </button>
       </div>
     </div>

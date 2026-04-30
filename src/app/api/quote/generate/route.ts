@@ -1,52 +1,14 @@
-import { anthropic } from "@ai-sdk/anthropic";
-import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/api/session";
+import { loadAggregatedWorkLogText } from "@/lib/onboarding/aggregated-work-log-text";
+import { buildQuoteGeneratePrompt } from "@/lib/quote-generation/build-prompt";
+import { runAnthropicQuoteGeneration } from "@/lib/quote-generation/run-anthropic-quote";
+import { quoteGenerateRequestSchema } from "@/lib/schemas/quote-builder";
+import { createClient } from "@/lib/supabase/server";
 import {
-  quoteAiResponseSchema,
-  quoteGenerateRequestSchema,
-} from "@/lib/schemas/quote-builder";
-
-function buildPrompt(input: {
-  mode: "chat" | "form";
-  conversation?: string;
-  collectedSummary?: Record<string, unknown>;
-  job?: Record<string, string>;
-  formVoiceTranscript?: string;
-  workLogCount: number;
-  sitePhotoCount: number;
-}): string {
-  let prompt = "";
-  if (input.mode === "chat") {
-    prompt =
-      "You are an expert estimator for trades businesses in Atlantic Canada. Generate an accurate quote based on this conversation.\n\nCONVERSATION:\n" +
-      (input.conversation ?? "") +
-      "\n\nSUMMARY:\n" +
-      JSON.stringify(input.collectedSummary ?? {}) +
-      "\n\n";
-  } else {
-    const d = {
-      ...input.job,
-      voiceNote: input.formVoiceTranscript ?? "",
-    };
-    prompt =
-      "You are an expert estimator for trades businesses in Atlantic Canada. Generate an accurate quote for this job.\n\nJOB DETAILS:\n" +
-      JSON.stringify(d) +
-      "\n\n";
-  }
-
-  const hasLogs = input.workLogCount > 0;
-  prompt += hasLogs
-    ? `The contractor has uploaded ${input.workLogCount} work log file(s). Calibrate pricing to their real rates.`
-    : "Use standard Atlantic Canada market rates.";
-  if (input.sitePhotoCount > 0) {
-    prompt += ` The contractor has also provided ${input.sitePhotoCount} site photo(s). Use what you can see in the images to improve quote accuracy.`;
-  }
-  prompt +=
-    '\n\nRespond ONLY with valid JSON:\n{"lineItems":[{"description":"...","quantity":1,"unitPrice":0,"total":0}],"total":0,"rationale":"Brief pricing explanation","notes":"Important conditions"}';
-
-  return prompt;
-}
+  consumeQuoteAiGenerationSlot,
+  QUOTE_AI_DAILY_LIMIT,
+} from "@/lib/quote-ai-rate-limit";
 
 export async function POST(req: Request) {
   const { user } = await getSessionUser();
@@ -84,55 +46,55 @@ export async function POST(req: Request) {
     );
   }
 
-  const prompt = buildPrompt({
+  const supabase = await createClient();
+
+  const slot = await consumeQuoteAiGenerationSlot(supabase, user.id);
+  if (!slot.ok && slot.reason === "rpc") {
+    return NextResponse.json(
+      {
+        error:
+          "Could not verify AI usage limit. Apply db/quote_ai_rate_limit.sql in Supabase, or try again.",
+        details: slot.message,
+      },
+      { status: 503 },
+    );
+  }
+  if (!slot.ok && slot.reason === "limit") {
+    return NextResponse.json(
+      {
+        error: `Daily limit of ${slot.limit} AI quote generations reached. Resets at midnight UTC.`,
+        limit: slot.limit,
+        remaining: 0,
+      },
+      { status: 429 },
+    );
+  }
+
+  const workLogContext = await loadAggregatedWorkLogText(supabase, user.id);
+
+  const prompt = buildQuoteGeneratePrompt({
     mode: input.mode,
     conversation: input.conversation,
     collectedSummary: input.collectedSummary,
     job: input.job,
     formVoiceTranscript: input.formVoiceTranscript,
     workLogCount: input.workLogCount,
+    workLogContext,
     sitePhotoCount: input.sitePhotos.length,
   });
 
-  const imageParts = input.sitePhotos.map((p) => ({
-    type: "image" as const,
-    image: `data:${p.mime};base64,${p.b64}`,
-  }));
-
   try {
-    const userContent =
-      imageParts.length > 0
-        ? [...imageParts, { type: "text" as const, text: prompt }]
-        : prompt;
-
-    const { text } = await generateText({
-      model: anthropic("claude-sonnet-4-20250514"),
-      maxOutputTokens: 1000,
-      messages: [{ role: "user", content: userContent }],
-    });
-
-    const clean = text.replace(/```json|```/g, "").trim();
-    const raw = JSON.parse(clean) as unknown;
-    const validated = quoteAiResponseSchema.safeParse(raw);
-    if (!validated.success) {
-      return NextResponse.json(
-        { error: "Model output did not match schema", issues: validated.error.issues },
-        { status: 502 },
-      );
-    }
-
-    const data = validated.data;
-    const lineItems = data.lineItems.map((item) => {
-      const q = item.quantity || 1;
-      const u = item.unitPrice || 0;
-      const t = item.total ?? q * u;
-      return { ...item, quantity: q, unitPrice: u, total: t };
+    const { lineItems, rationale, notes } = await runAnthropicQuoteGeneration({
+      prompt,
+      sitePhotos: input.sitePhotos,
     });
 
     return NextResponse.json({
       lineItems,
-      rationale: data.rationale,
-      notes: data.notes,
+      rationale,
+      notes,
+      generationsRemaining: slot.remaining,
+      dailyLimit: QUOTE_AI_DAILY_LIMIT,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Generation failed";

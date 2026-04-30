@@ -29,6 +29,8 @@
 .qb-logout:hover{color:var(--text);border-color:var(--text3);background:var(--white)}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:livepulse 2s infinite}
 .header-label{font-size:13px;color:var(--text2)}
+.qb-setup-link{font-size:13px;font-weight:500;color:var(--green);text-decoration:none;padding:6px 10px;border-radius:var(--radius);transition:color .15s,background .15s}
+.qb-setup-link:hover{color:var(--text);background:var(--green-bg)}
 
 /* STEP NAV */
 .step-bar{background:var(--white);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}

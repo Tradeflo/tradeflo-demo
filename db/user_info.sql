@@ -56,6 +56,7 @@ create policy "Users can update own user_info"
   with check (auth.uid() = id);
 
 -- Optional: seed row on signup (id + email from auth; other columns null until UI collects them)
+-- Milestone 2 onboarding + work_logs: db/onboarding.sql
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
