@@ -13,7 +13,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("quotes")
     .select(
-      "id, user_id, status, title, current_version, created_at, updated_at, quote_versions(id, version_number, payload, updated_at)",
+      "id, user_id, status, title, current_version, created_at, updated_at, quote_versions(id, version_number, status, payload, updated_at)",
     )
     .eq("user_id", user.id)
     .order("updated_at", { ascending: false });
@@ -67,6 +67,7 @@ export async function POST(request: Request) {
   const { error: versionError } = await supabase.from("quote_versions").insert({
     quote_id: quote.id,
     version_number: quote.current_version,
+    status: "draft",
     payload: draftPayload,
   });
 
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
   const { data: full, error: fetchError } = await supabase
     .from("quotes")
     .select(
-      "id, user_id, status, title, current_version, created_at, updated_at, quote_versions(id, version_number, payload, updated_at)",
+      "id, user_id, status, title, current_version, created_at, updated_at, quote_versions(id, version_number, status, payload, updated_at)",
     )
     .eq("id", quote.id)
     .single();
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
         updatedAt: quote.updated_at,
         draft: {
           versionNumber: quote.current_version,
+          status: "draft",
           payload: draftPayload,
           updatedAt: quote.updated_at,
         },

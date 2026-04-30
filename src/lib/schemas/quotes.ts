@@ -25,3 +25,11 @@ export const patchQuoteBodySchema = z
 export type PatchQuoteBody = z.infer<typeof patchQuoteBodySchema>;
 
 export const quoteIdParamSchema = z.string().uuid();
+
+export const quotesSendBodySchema = z
+  .object({
+    personalNote: z.string().max(2000).optional(),
+  })
+  .strict();
+
+export type QuotesSendBody = z.infer<typeof quotesSendBodySchema>;

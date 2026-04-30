@@ -116,6 +116,8 @@ export function useQuoteBuilderModel() {
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
   const [persistError, setPersistError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
   const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
@@ -372,38 +374,54 @@ export function useQuoteBuilderModel() {
     ],
   );
 
-  useEffect(() => {
-    if (isHydrating || !quoteId) return;
+  const sendQuote = useCallback(async () => {
+    if (!quoteId) {
+      setSendError("No quote to send. Refresh the page and try again.");
+      return;
+    }
+    setIsSending(true);
+    setSendError(null);
+    try {
+      const flushRes = await fetch(`/api/quotes/${quoteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payload: persistSnapshot as unknown as Record<string, unknown>,
+        }),
+      });
+      if (!flushRes.ok) {
+        const err = (await flushRes.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(
+          typeof err.error === "string" ? err.error : "Could not save quote",
+        );
+      }
 
-    const t = setTimeout(() => {
-      void (async () => {
-        try {
-          const res = await fetch(`/api/quotes/${quoteId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              payload: persistSnapshot as unknown as Record<string, unknown>,
-            }),
-          });
-          if (!res.ok) {
-            const err = (await res.json().catch(() => ({}))) as {
-              error?: string;
-            };
-            throw new Error(
-              typeof err.error === "string" ? err.error : "Save failed",
-            );
-          }
-          setPersistError(null);
-        } catch (e) {
-          setPersistError(
-            e instanceof Error ? e.message : "Could not save quote",
-          );
-        }
-      })();
-    }, 1000);
-
-    return () => clearTimeout(t);
-  }, [persistSnapshot, quoteId, isHydrating]);
+      const sendRes = await fetch(`/api/quotes/${quoteId}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personalNote }),
+      });
+      const sendBody = (await sendRes.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!sendRes.ok) {
+        throw new Error(
+          typeof sendBody.error === "string"
+            ? sendBody.error
+            : "Send failed",
+        );
+      }
+      setSentDone(true);
+    } catch (e) {
+      setSendError(
+        e instanceof Error ? e.message : "Could not send quote",
+      );
+    } finally {
+      setIsSending(false);
+    }
+  }, [quoteId, persistSnapshot, personalNote]);
 
   const typing = chatStatus === "submitted" || chatStatus === "streaming";
   const chatDisabled = chatStatus !== "ready";
@@ -411,7 +429,10 @@ export function useQuoteBuilderModel() {
 
   const generateMutation = useMutation({
     mutationFn: async (body: QuoteGenerateRequest) => {
-      const res = await fetch("/api/quote/generate", {
+      const url = quoteId
+        ? `/api/quotes/${quoteId}/generate`
+        : "/api/quote/generate";
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -470,6 +491,39 @@ export function useQuoteBuilderModel() {
       ]);
     },
   });
+
+  useEffect(() => {
+    if (isHydrating || !quoteId || generateMutation.isPending) return;
+
+    const t = setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch(`/api/quotes/${quoteId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              payload: persistSnapshot as unknown as Record<string, unknown>,
+            }),
+          });
+          if (!res.ok) {
+            const err = (await res.json().catch(() => ({}))) as {
+              error?: string;
+            };
+            throw new Error(
+              typeof err.error === "string" ? err.error : "Save failed",
+            );
+          }
+          setPersistError(null);
+        } catch (e) {
+          setPersistError(
+            e instanceof Error ? e.message : "Could not save quote",
+          );
+        }
+      })();
+    }, 1000);
+
+    return () => clearTimeout(t);
+  }, [persistSnapshot, quoteId, isHydrating, generateMutation.isPending]);
 
   useEffect(() => {
     if (!generateMutation.isPending) {
@@ -649,6 +703,7 @@ export function useQuoteBuilderModel() {
     setCurrentMode("chat");
     setFormError("");
     setQuoteError("");
+    setSendError(null);
     clearChatError();
     const nextSid = generateId();
     setChatSessionId(nextSid);
@@ -740,6 +795,9 @@ export function useQuoteBuilderModel() {
     removePhoto,
     resetFlow,
     quoteId,
+    sendQuote,
+    isSending,
+    sendError,
     isHydrating,
     persistError,
   };

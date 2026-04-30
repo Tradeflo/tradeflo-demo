@@ -2,7 +2,7 @@ import type { QuoteRow, QuoteVersionRow } from "@/types/quote";
 
 type VersionSlice = Pick<
   QuoteVersionRow,
-  "id" | "version_number" | "payload" | "updated_at"
+  "id" | "version_number" | "status" | "payload" | "updated_at"
 >;
 
 export type QuoteWithVersionRows = QuoteRow & {
@@ -32,11 +32,13 @@ export function formatQuoteResponse(row: QuoteWithVersionRows) {
       ? {
           versionId: current.id,
           versionNumber: current.version_number,
+          status: current.status,
           payload: asRecordPayload(current.payload),
           updatedAt: current.updated_at,
         }
       : {
           versionNumber: row.current_version,
+          status: "draft" as const,
           payload: {} as Record<string, unknown>,
           updatedAt: row.updated_at,
         },
