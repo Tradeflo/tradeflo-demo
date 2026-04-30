@@ -14,7 +14,10 @@ export default async function SignupPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next } = await searchParams;
-  const redirectTo = safeNextPath(next);
+  const redirectTo =
+    typeof next === "string" && next.length > 0
+      ? safeNextPath(next)
+      : "/onboarding";
 
   return (
     <AuthShell

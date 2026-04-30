@@ -1,4 +1,5 @@
 import { LogoutButton } from "@/components/auth/logout-button";
+import { OnboardingHeaderLink } from "@/components/onboarding/OnboardingHeaderLink";
 
 export function QuoteHeader() {
   return (
@@ -10,6 +11,7 @@ export function QuoteHeader() {
       <div className="header-right">
         <div className="live-dot" />
         <span className="header-label">Quote Builder</span>
+        <OnboardingHeaderLink />
         <LogoutButton />
       </div>
     </header>
