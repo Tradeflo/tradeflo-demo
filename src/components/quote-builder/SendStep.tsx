@@ -40,7 +40,7 @@ export function SendStep({ model }: SendStepProps) {
           Need changes? Go back to review, edit line items, save draft, then
           send again from here.
         </p>
-        <div className="btn-row" style={{ marginTop: 16 }}>
+        <div className="btn-row">
           <button
             type="button"
             className="btn"

@@ -203,6 +203,8 @@
 .success-ring{width:72px;height:72px;border-radius:50%;border:2px solid var(--green-border);background:var(--green-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px;color:var(--green)}
 .success h2{font-size:22px;font-weight:600;margin-bottom:10px}
 .success p{font-size:15px;color:var(--text2);max-width:300px;margin:0 auto 24px;line-height:1.7}
+.success .btn-row{justify-content:center;align-items:center;margin-top:20px}
+.success .btn-row .btn{width:auto;max-width:100%}
 
 /* ERROR */
 .error-box{background:var(--red-bg);border:1px solid var(--red-border);border-radius:var(--radius);padding:14px 16px;font-size:14px;color:var(--red);line-height:1.6;margin-bottom:16px;display:none}
