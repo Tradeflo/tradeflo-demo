@@ -37,10 +37,10 @@ export async function GET() {
   const { count } = await supabase
     .from("work_logs")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("processing_status", "complete");
+    .eq("user_id", user.id);
 
   const businessDone = businessStepComplete(u ?? null);
+  /** Any stored upload counts; extraction can be `failed` but step is still done (user engaged). */
   const workLogsDone =
     Boolean(u?.onboarding_skip_work_logs) || (count ?? 0) > 0;
   const completed = Boolean(u?.onboarding_completed);

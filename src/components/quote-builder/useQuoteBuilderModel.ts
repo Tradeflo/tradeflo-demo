@@ -28,6 +28,7 @@ import type {
   JobFormData,
   LineItem,
   SitePhoto,
+  WorkLogUploadRow,
 } from "./types";
 
 const WELCOME_TEXT =
@@ -68,7 +69,13 @@ export function useQuoteBuilderModel() {
   const [currentMode, setCurrentMode] = useState<"chat" | "form">("chat");
   const [lines, setLines] = useState<LineItem[]>([]);
   const [sitePhotos, setSitePhotos] = useState<SitePhoto[]>([]);
-  const [workLogs, setWorkLogs] = useState<File[]>([]);
+  const [workLogUploads, setWorkLogUploads] = useState<WorkLogUploadRow[]>(
+    [],
+  );
+  const [workLogUploadError, setWorkLogUploadError] = useState<string | null>(
+    null,
+  );
+  const [workLogUploading, setWorkLogUploading] = useState(false);
   const [collectedJobData, setCollectedJobData] = useState<
     Record<string, unknown>
   >({});
@@ -198,7 +205,13 @@ export function useQuoteBuilderModel() {
       setCurrentMode(p.currentMode);
       setLines(p.lines);
       setSitePhotos(p.sitePhotos);
-      setWorkLogs([]);
+      setWorkLogUploads(
+        p.workLogNames.map((fileName, i) => ({
+          id: `draft-${i}-${fileName}`,
+          fileName,
+          processingStatus: "complete",
+        })),
+      );
       setCollectedJobData(p.collectedJobData);
       setQuoteReady(p.quoteReady);
       setQuoteNum(p.quoteNum);
@@ -343,7 +356,7 @@ export function useQuoteBuilderModel() {
         currentMode,
         lines,
         sitePhotos,
-        workLogs,
+        workLogNames: workLogUploads.map((u) => u.fileName),
         collectedJobData,
         quoteReady,
         quoteNum,
@@ -370,7 +383,7 @@ export function useQuoteBuilderModel() {
       currentMode,
       lines,
       sitePhotos,
-      workLogs,
+      workLogUploads,
       collectedJobData,
       quoteReady,
       quoteNum,
@@ -608,14 +621,14 @@ export function useQuoteBuilderModel() {
             conversation: conversationFromMessages(messages),
             collectedSummary: collectedJobData,
             sitePhotos: sitePayload,
-            workLogCount: workLogs.length,
+            workLogCount: workLogUploads.length,
           }
         : {
             mode: "form",
             job: formJob!,
             formVoiceTranscript: formVoiceTranscript || undefined,
             sitePhotos: sitePayload,
-            workLogCount: workLogs.length,
+            workLogCount: workLogUploads.length,
           };
 
       generateMutation.mutate(body);
@@ -625,7 +638,7 @@ export function useQuoteBuilderModel() {
       messages,
       collectedJobData,
       sitePhotos,
-      workLogs,
+      workLogUploads,
       formVoiceTranscript,
       generateMutation,
     ],
@@ -666,13 +679,48 @@ export function useQuoteBuilderModel() {
     [lines],
   );
 
-  const handleWorkLogs = useCallback((files: FileList | null) => {
+  const uploadWorkLogFiles = useCallback(async (files: FileList | null) => {
     if (!files?.length) return;
-    setWorkLogs((prev) => [...prev, ...Array.from(files)]);
+    setWorkLogUploadError(null);
+    setWorkLogUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const fd = new FormData();
+        fd.set("file", file);
+        const res = await fetch("/api/onboarding/work-logs/upload", {
+          method: "POST",
+          body: fd,
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          workLog?: {
+            id: string;
+            fileName: string;
+            processingStatus: string;
+          };
+        };
+        if (!res.ok) {
+          throw new Error(
+            typeof data.error === "string"
+              ? data.error
+              : `Upload failed: ${file.name}`,
+          );
+        }
+        if (data.workLog) {
+          setWorkLogUploads((prev) => [...prev, data.workLog!]);
+        }
+      }
+    } catch (e) {
+      setWorkLogUploadError(
+        e instanceof Error ? e.message : "Work log upload failed",
+      );
+    } finally {
+      setWorkLogUploading(false);
+    }
   }, []);
 
-  const removeWorkLog = useCallback((name: string) => {
-    setWorkLogs((prev) => prev.filter((f) => f.name !== name));
+  const removeWorkLog = useCallback((id: string) => {
+    setWorkLogUploads((prev) => prev.filter((u) => u.id !== id));
   }, []);
 
   const handleSitePhotos = useCallback((files: FileList | null) => {
@@ -696,7 +744,8 @@ export function useQuoteBuilderModel() {
 
   const resetFlow = useCallback(async () => {
     setLines([]);
-    setWorkLogs([]);
+    setWorkLogUploads([]);
+    setWorkLogUploadError(null);
     setSitePhotos([]);
     setCollectedJobData({});
     setQuoteReady(false);
@@ -765,7 +814,10 @@ export function useQuoteBuilderModel() {
     lines,
     setLines,
     sitePhotos,
-    workLogs,
+    workLogUploads,
+    workLogUploadError,
+    workLogUploading,
+    uploadWorkLogFiles,
     messages,
     collectedJobData,
     quoteReady,
@@ -814,7 +866,6 @@ export function useQuoteBuilderModel() {
     removeLine,
     addLine,
     totalAmount,
-    handleWorkLogs,
     removeWorkLog,
     handleSitePhotos,
     removePhoto,

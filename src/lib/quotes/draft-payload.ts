@@ -130,7 +130,7 @@ export function buildDraftPayloadV1(input: {
   currentMode: "chat" | "form";
   lines: LineItem[];
   sitePhotos: SitePhoto[];
-  workLogs: File[];
+  workLogNames: string[];
   collectedJobData: Record<string, unknown>;
   quoteReady: boolean;
   quoteNum: string;
@@ -158,7 +158,7 @@ export function buildDraftPayloadV1(input: {
     currentMode: input.currentMode,
     lines: input.lines,
     sitePhotos: input.sitePhotos,
-    workLogNames: input.workLogs.map((f) => f.name),
+    workLogNames: input.workLogNames,
     collectedJobData: input.collectedJobData,
     quoteReady: input.quoteReady,
     quoteNum: input.quoteNum,

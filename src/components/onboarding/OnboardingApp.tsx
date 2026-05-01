@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QuoteFooter } from "@/components/quote-builder/QuoteFooter";
 import "@/components/quote-builder/quote-builder.css";
@@ -43,7 +43,6 @@ type UploadRow = {
 
 export function OnboardingApp() {
   const router = useRouter();
-  const wlInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +70,9 @@ export function OnboardingApp() {
   const [finishing, setFinishing] = useState(false);
 
   const fetchStatus = useCallback(async () => {
-    const res = await fetch("/api/onboarding/status");
+    const res = await fetch("/api/onboarding/status", {
+      credentials: "include",
+    });
     if (res.status === 401) {
       router.replace("/login?next=/onboarding");
       return null;
@@ -155,6 +156,7 @@ export function OnboardingApp() {
       const res = await fetch("/api/onboarding/business", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(body),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -176,44 +178,53 @@ export function OnboardingApp() {
     }
   };
 
-  const onPickWorkLog = () => wlInputRef.current?.click();
-
   const onWorkLogChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    e.target.value = "";
-    if (!files?.length) return;
+    const input = e.currentTarget;
+    const picked = input.files ? Array.from(input.files) : [];
+    input.value = "";
+    if (!picked.length) return;
 
     setUploading(true);
     setError(null);
     try {
-      for (const file of Array.from(files)) {
+      for (const file of picked) {
         const fd = new FormData();
         fd.set("file", file);
         const res = await fetch("/api/onboarding/work-logs/upload", {
           method: "POST",
           body: fd,
+          credentials: "include",
         });
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string;
-          workLog?: UploadRow;
-        };
+        const raw = (await res.json().catch(() => (null))) as
+          | { error?: string; workLog?: unknown }
+          | null;
+        const wl = raw?.workLog as Record<string, unknown> | undefined;
         if (!res.ok) {
           throw new Error(
-            typeof data.error === "string"
-              ? data.error
+            typeof raw?.error === "string"
+              ? raw.error
               : `Upload failed: ${file.name}`,
           );
         }
-        if (data.workLog) {
-          setUploads((prev) => [
-            ...prev,
-            {
-              id: data.workLog!.id,
-              fileName: data.workLog!.fileName,
-              processingStatus: data.workLog!.processingStatus,
-            },
-          ]);
+        if (!wl || wl.id == null) {
+          throw new Error(
+            "Upload succeeded but the server returned an unexpected response. Please refresh and try again.",
+          );
         }
+        const id = String(wl.id);
+        const fileName =
+          typeof wl.fileName === "string"
+            ? wl.fileName
+            : typeof wl.file_name === "string"
+              ? wl.file_name
+              : file.name;
+        const processingStatus =
+          typeof wl.processingStatus === "string"
+            ? wl.processingStatus
+            : typeof wl.processing_status === "string"
+              ? wl.processing_status
+              : "complete";
+        setUploads((prev) => [...prev, { id, fileName, processingStatus }]);
       }
       const s = await refreshStatus();
       if (s?.steps.workLogs.completed) {
@@ -232,6 +243,7 @@ export function OnboardingApp() {
     try {
       const res = await fetch("/api/onboarding/skip-work-logs", {
         method: "POST",
+        credentials: "include",
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
@@ -252,7 +264,10 @@ export function OnboardingApp() {
     setFinishing(true);
     setError(null);
     try {
-      const res = await fetch("/api/onboarding/complete", { method: "POST" });
+      const res = await fetch("/api/onboarding/complete", {
+        method: "POST",
+        credentials: "include",
+      });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         throw new Error(
@@ -527,12 +542,23 @@ export function OnboardingApp() {
                 jobs — or skip if you prefer to start fresh.
               </p>
 
-              <button
-                type="button"
-                className={`worklog-zone${uploads.length > 0 ? " loaded" : ""}`}
-                onClick={onPickWorkLog}
-                disabled={uploading}
+              <label
+                className={`worklog-zone${uploads.length > 0 ? " loaded" : ""}${uploading ? " is-busy" : ""}`}
+                style={
+                  uploading
+                    ? { opacity: 0.85, pointerEvents: "none" }
+                    : undefined
+                }
               >
+                <input
+                  type="file"
+                  className="worklog-zone-input"
+                  accept=".pdf,.csv,.txt,.xlsx,.xls,application/pdf,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  multiple
+                  onChange={(e) => void onWorkLogChange(e)}
+                  disabled={uploading}
+                  aria-label="Choose work log files to upload"
+                />
                 <div
                   style={{
                     fontSize: 18,
@@ -560,15 +586,7 @@ export function OnboardingApp() {
                 >
                   PDF, .xlsx, .xls, .csv, or .txt · max 10 MB per file
                 </div>
-              </button>
-              <input
-                ref={wlInputRef}
-                type="file"
-                accept=".pdf,.csv,.txt,.xlsx,.xls"
-                multiple
-                style={{ display: "none" }}
-                onChange={(e) => void onWorkLogChange(e)}
-              />
+              </label>
 
               {uploads.length > 0 ? (
                 <div className="wl-list show" style={{ marginTop: 12 }}>

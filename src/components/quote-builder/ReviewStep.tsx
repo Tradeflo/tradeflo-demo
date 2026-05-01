@@ -19,7 +19,6 @@ export function ReviewStep({ model }: ReviewStepProps) {
     quoteNotes,
     setQuoteNotes,
     goTo,
-    workLogs,
     editVoiceTranscript,
     setEditVoiceTranscript,
   } = model;
@@ -53,11 +52,13 @@ export function ReviewStep({ model }: ReviewStepProps) {
         <div className="card">
           <div className="card-label">
             Line items
-            {workLogs.length > 0 ? (
+            {/*
+            {workLogUploads.length > 0 ? (
               <span className="badge badge-green" id="calib-badge">
                 Work log calibrated
               </span>
             ) : null}
+            */}
             <span className="badge badge-blue">AI generated</span>
           </div>
           <div className="ql-head">
