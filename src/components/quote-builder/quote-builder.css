@@ -5,6 +5,9 @@
 .qb-banner-error{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
 .qb-banner-muted{background:var(--surface);color:var(--text2)}
 
+.qb-save-bar{display:flex;justify-content:flex-end;align-items:center;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.qb-save-bar .btn{padding:8px 16px;font-size:13px}
+
 .qb-app{
   --bg:#f5f4f1;--white:#fff;--surface:#fafaf8;--border:#e2e0db;--border-strong:#c8c5be;
   --text:#1a1916;--text2:#6b6860;--text3:#a09d98;--accent-light:#f0ede8;

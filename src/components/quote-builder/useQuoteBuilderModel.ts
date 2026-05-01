@@ -118,10 +118,21 @@ export function useQuoteBuilderModel() {
   const [persistError, setPersistError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
+  /** Tracks step changes so we can clear `sentDone` only when user leaves Send (step 3). */
+  const prevStepForSentDoneRef = useRef<number | null>(null);
+
+  const syncSentDoneFromQuoteResponse = useCallback((body: unknown) => {
+    const b = body as { data?: { draft?: { payload?: unknown } } };
+    const pl = b.data?.draft?.payload;
+    if (pl && typeof pl === "object" && !Array.isArray(pl)) {
+      setSentDone(parseQuoteDraftPayload(pl as Record<string, unknown>).sentDone);
+    }
+  }, []);
 
   const goTo = useCallback((n: number) => {
     setCurrentStep(n);
@@ -316,6 +327,15 @@ export function useQuoteBuilderModel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const prev = prevStepForSentDoneRef.current;
+    prevStepForSentDoneRef.current = currentStep;
+    if (prev === null) return;
+    if (prev === 3 && currentStep !== 3 && sentDone) {
+      setSentDone(false);
+    }
+  }, [currentStep, sentDone]);
+
   const persistSnapshot = useMemo(
     () =>
       buildDraftPayloadV1({
@@ -374,6 +394,40 @@ export function useQuoteBuilderModel() {
     ],
   );
 
+  const saveDraft = useCallback(async () => {
+    if (!quoteId) {
+      setPersistError("No quote to save.");
+      return;
+    }
+    setIsSavingDraft(true);
+    setPersistError(null);
+    try {
+      const res = await fetch(`/api/quotes/${quoteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payload: persistSnapshot as unknown as Record<string, unknown>,
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        data?: { draft?: { payload?: unknown } };
+      };
+      if (!res.ok) {
+        throw new Error(
+          typeof body.error === "string" ? body.error : "Save failed",
+        );
+      }
+      syncSentDoneFromQuoteResponse(body);
+    } catch (e) {
+      setPersistError(
+        e instanceof Error ? e.message : "Could not save quote",
+      );
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [quoteId, persistSnapshot, syncSentDoneFromQuoteResponse]);
+
   const sendQuote = useCallback(async () => {
     if (!quoteId) {
       setSendError("No quote to send. Refresh the page and try again.");
@@ -389,14 +443,18 @@ export function useQuoteBuilderModel() {
           payload: persistSnapshot as unknown as Record<string, unknown>,
         }),
       });
+      const flushBody = (await flushRes.json().catch(() => ({}))) as {
+        error?: string;
+        data?: { draft?: { payload?: unknown } };
+      };
       if (!flushRes.ok) {
-        const err = (await flushRes.json().catch(() => ({}))) as {
-          error?: string;
-        };
         throw new Error(
-          typeof err.error === "string" ? err.error : "Could not save quote",
+          typeof flushBody.error === "string"
+            ? flushBody.error
+            : "Could not save quote",
         );
       }
+      syncSentDoneFromQuoteResponse(flushBody);
 
       const sendRes = await fetch(`/api/quotes/${quoteId}/send`, {
         method: "POST",
@@ -421,7 +479,7 @@ export function useQuoteBuilderModel() {
     } finally {
       setIsSending(false);
     }
-  }, [quoteId, persistSnapshot, personalNote]);
+  }, [quoteId, persistSnapshot, personalNote, syncSentDoneFromQuoteResponse]);
 
   const typing = chatStatus === "submitted" || chatStatus === "streaming";
   const chatDisabled = chatStatus !== "ready";
@@ -491,39 +549,6 @@ export function useQuoteBuilderModel() {
       ]);
     },
   });
-
-  useEffect(() => {
-    if (isHydrating || !quoteId || generateMutation.isPending) return;
-
-    const t = setTimeout(() => {
-      void (async () => {
-        try {
-          const res = await fetch(`/api/quotes/${quoteId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              payload: persistSnapshot as unknown as Record<string, unknown>,
-            }),
-          });
-          if (!res.ok) {
-            const err = (await res.json().catch(() => ({}))) as {
-              error?: string;
-            };
-            throw new Error(
-              typeof err.error === "string" ? err.error : "Save failed",
-            );
-          }
-          setPersistError(null);
-        } catch (e) {
-          setPersistError(
-            e instanceof Error ? e.message : "Could not save quote",
-          );
-        }
-      })();
-    }, 1000);
-
-    return () => clearTimeout(t);
-  }, [persistSnapshot, quoteId, isHydrating, generateMutation.isPending]);
 
   useEffect(() => {
     if (!generateMutation.isPending) {
@@ -800,6 +825,8 @@ export function useQuoteBuilderModel() {
     sendError,
     isHydrating,
     persistError,
+    saveDraft,
+    isSavingDraft,
   };
 }
 

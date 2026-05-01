@@ -91,6 +91,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     return jsonError("Quote version not found", 404);
   }
 
+  const headIsDraft =
+    headVersion.status === "draft" ||
+    ((headVersion.status == null || headVersion.status === "") &&
+      quote.status === "draft");
+
   const { title, payload } = parsed.data;
 
   if (title !== undefined) {
@@ -108,7 +113,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   if (payload !== undefined) {
-    if (headVersion.status === "draft") {
+    if (headIsDraft) {
       const { error: payloadError } = await supabase
         .from("quote_versions")
         .update({ payload })

@@ -26,6 +26,22 @@ export function QuoteBuilderApp() {
           Loading your quote…
         </div>
       ) : null}
+      {!model.isHydrating && model.quoteId ? (
+        <div className="qb-save-bar">
+          <button
+            type="button"
+            className="btn"
+            onClick={() => void model.saveDraft()}
+            disabled={
+              model.isSavingDraft ||
+              model.quoteLoading ||
+              model.isSending
+            }
+          >
+            {model.isSavingDraft ? "Saving…" : "Save draft"}
+          </button>
+        </div>
+      ) : null}
       <div className="app">
         <QuoteHeader />
         <StepNavigation

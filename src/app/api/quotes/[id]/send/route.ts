@@ -79,7 +79,12 @@ export async function POST(request: Request, context: RouteContext) {
     return jsonError("Quote version not found", 404);
   }
 
-  if (headVersion.status !== "draft") {
+  const headIsDraftForSend =
+    headVersion.status === "draft" ||
+    ((headVersion.status == null || headVersion.status === "") &&
+      quote.status === "draft");
+
+  if (!headIsDraftForSend) {
     return jsonError(
       "Only a draft version can be sent. Start a new revision to send again.",
       409,
@@ -133,7 +138,6 @@ export async function POST(request: Request, context: RouteContext) {
       approval_token: token,
     })
     .eq("id", headVersion.id)
-    .eq("status", "draft")
     .select("id, version_number");
 
   if (versionError) {

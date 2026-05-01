@@ -22,6 +22,7 @@ export function SendStep({ model }: SendStepProps) {
     sendQuote,
     isSending,
     sendError,
+    goTo,
   } = model;
 
   const customerName = fname.trim() || "Your customer";
@@ -35,14 +36,28 @@ export function SendStep({ model }: SendStepProps) {
           {customerName} has received their quote. You will be notified when
           they respond.
         </p>
-        <button
-          type="button"
-          className="btn btn-primary"
-          id="btn-reset"
-          onClick={() => void resetFlow()}
-        >
-          Start a new quote
-        </button>
+        <p className="help-text" style={{ marginTop: 12 }}>
+          Need changes? Go back to review, edit line items, save draft, then
+          send again from here.
+        </p>
+        <div className="btn-row" style={{ marginTop: 16 }}>
+          <button
+            type="button"
+            className="btn"
+            id="btn-revise-after-send"
+            onClick={() => goTo(1)}
+          >
+            Back to review & revise
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            id="btn-reset"
+            onClick={() => void resetFlow()}
+          >
+            Start a new quote
+          </button>
+        </div>
       </div>
     );
   }
