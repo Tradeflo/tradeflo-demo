@@ -24,3 +24,10 @@ export type JobFormData = {
 };
 
 export type DeliveryOption = "email" | "sms" | "both";
+
+/** Row after POST `/api/onboarding/work-logs/upload` (quote builder session). */
+export type WorkLogUploadRow = {
+  id: string;
+  fileName: string;
+  processingStatus: string;
+};

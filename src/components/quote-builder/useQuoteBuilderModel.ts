@@ -28,6 +28,7 @@ import type {
   JobFormData,
   LineItem,
   SitePhoto,
+  WorkLogUploadRow,
 } from "./types";
 
 const WELCOME_TEXT =
@@ -68,7 +69,13 @@ export function useQuoteBuilderModel() {
   const [currentMode, setCurrentMode] = useState<"chat" | "form">("chat");
   const [lines, setLines] = useState<LineItem[]>([]);
   const [sitePhotos, setSitePhotos] = useState<SitePhoto[]>([]);
-  const [workLogs, setWorkLogs] = useState<File[]>([]);
+  const [workLogUploads, setWorkLogUploads] = useState<WorkLogUploadRow[]>(
+    [],
+  );
+  const [workLogUploadError, setWorkLogUploadError] = useState<string | null>(
+    null,
+  );
+  const [workLogUploading, setWorkLogUploading] = useState(false);
   const [collectedJobData, setCollectedJobData] = useState<
     Record<string, unknown>
   >({});
@@ -118,10 +125,21 @@ export function useQuoteBuilderModel() {
   const [persistError, setPersistError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
+  /** Tracks step changes so we can clear `sentDone` only when user leaves Send (step 3). */
+  const prevStepForSentDoneRef = useRef<number | null>(null);
+
+  const syncSentDoneFromQuoteResponse = useCallback((body: unknown) => {
+    const b = body as { data?: { draft?: { payload?: unknown } } };
+    const pl = b.data?.draft?.payload;
+    if (pl && typeof pl === "object" && !Array.isArray(pl)) {
+      setSentDone(parseQuoteDraftPayload(pl as Record<string, unknown>).sentDone);
+    }
+  }, []);
 
   const goTo = useCallback((n: number) => {
     setCurrentStep(n);
@@ -187,7 +205,13 @@ export function useQuoteBuilderModel() {
       setCurrentMode(p.currentMode);
       setLines(p.lines);
       setSitePhotos(p.sitePhotos);
-      setWorkLogs([]);
+      setWorkLogUploads(
+        p.workLogNames.map((fileName, i) => ({
+          id: `draft-${i}-${fileName}`,
+          fileName,
+          processingStatus: "complete",
+        })),
+      );
       setCollectedJobData(p.collectedJobData);
       setQuoteReady(p.quoteReady);
       setQuoteNum(p.quoteNum);
@@ -316,6 +340,15 @@ export function useQuoteBuilderModel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const prev = prevStepForSentDoneRef.current;
+    prevStepForSentDoneRef.current = currentStep;
+    if (prev === null) return;
+    if (prev === 3 && currentStep !== 3 && sentDone) {
+      setSentDone(false);
+    }
+  }, [currentStep, sentDone]);
+
   const persistSnapshot = useMemo(
     () =>
       buildDraftPayloadV1({
@@ -323,7 +356,7 @@ export function useQuoteBuilderModel() {
         currentMode,
         lines,
         sitePhotos,
-        workLogs,
+        workLogNames: workLogUploads.map((u) => u.fileName),
         collectedJobData,
         quoteReady,
         quoteNum,
@@ -350,7 +383,7 @@ export function useQuoteBuilderModel() {
       currentMode,
       lines,
       sitePhotos,
-      workLogs,
+      workLogUploads,
       collectedJobData,
       quoteReady,
       quoteNum,
@@ -374,6 +407,40 @@ export function useQuoteBuilderModel() {
     ],
   );
 
+  const saveDraft = useCallback(async () => {
+    if (!quoteId) {
+      setPersistError("No quote to save.");
+      return;
+    }
+    setIsSavingDraft(true);
+    setPersistError(null);
+    try {
+      const res = await fetch(`/api/quotes/${quoteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payload: persistSnapshot as unknown as Record<string, unknown>,
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        data?: { draft?: { payload?: unknown } };
+      };
+      if (!res.ok) {
+        throw new Error(
+          typeof body.error === "string" ? body.error : "Save failed",
+        );
+      }
+      syncSentDoneFromQuoteResponse(body);
+    } catch (e) {
+      setPersistError(
+        e instanceof Error ? e.message : "Could not save quote",
+      );
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [quoteId, persistSnapshot, syncSentDoneFromQuoteResponse]);
+
   const sendQuote = useCallback(async () => {
     if (!quoteId) {
       setSendError("No quote to send. Refresh the page and try again.");
@@ -389,14 +456,18 @@ export function useQuoteBuilderModel() {
           payload: persistSnapshot as unknown as Record<string, unknown>,
         }),
       });
+      const flushBody = (await flushRes.json().catch(() => ({}))) as {
+        error?: string;
+        data?: { draft?: { payload?: unknown } };
+      };
       if (!flushRes.ok) {
-        const err = (await flushRes.json().catch(() => ({}))) as {
-          error?: string;
-        };
         throw new Error(
-          typeof err.error === "string" ? err.error : "Could not save quote",
+          typeof flushBody.error === "string"
+            ? flushBody.error
+            : "Could not save quote",
         );
       }
+      syncSentDoneFromQuoteResponse(flushBody);
 
       const sendRes = await fetch(`/api/quotes/${quoteId}/send`, {
         method: "POST",
@@ -421,7 +492,7 @@ export function useQuoteBuilderModel() {
     } finally {
       setIsSending(false);
     }
-  }, [quoteId, persistSnapshot, personalNote]);
+  }, [quoteId, persistSnapshot, personalNote, syncSentDoneFromQuoteResponse]);
 
   const typing = chatStatus === "submitted" || chatStatus === "streaming";
   const chatDisabled = chatStatus !== "ready";
@@ -493,39 +564,6 @@ export function useQuoteBuilderModel() {
   });
 
   useEffect(() => {
-    if (isHydrating || !quoteId || generateMutation.isPending) return;
-
-    const t = setTimeout(() => {
-      void (async () => {
-        try {
-          const res = await fetch(`/api/quotes/${quoteId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              payload: persistSnapshot as unknown as Record<string, unknown>,
-            }),
-          });
-          if (!res.ok) {
-            const err = (await res.json().catch(() => ({}))) as {
-              error?: string;
-            };
-            throw new Error(
-              typeof err.error === "string" ? err.error : "Save failed",
-            );
-          }
-          setPersistError(null);
-        } catch (e) {
-          setPersistError(
-            e instanceof Error ? e.message : "Could not save quote",
-          );
-        }
-      })();
-    }, 1000);
-
-    return () => clearTimeout(t);
-  }, [persistSnapshot, quoteId, isHydrating, generateMutation.isPending]);
-
-  useEffect(() => {
     if (!generateMutation.isPending) {
       if (loadingIntervalRef.current) {
         clearInterval(loadingIntervalRef.current);
@@ -583,14 +621,14 @@ export function useQuoteBuilderModel() {
             conversation: conversationFromMessages(messages),
             collectedSummary: collectedJobData,
             sitePhotos: sitePayload,
-            workLogCount: workLogs.length,
+            workLogCount: workLogUploads.length,
           }
         : {
             mode: "form",
             job: formJob!,
             formVoiceTranscript: formVoiceTranscript || undefined,
             sitePhotos: sitePayload,
-            workLogCount: workLogs.length,
+            workLogCount: workLogUploads.length,
           };
 
       generateMutation.mutate(body);
@@ -600,7 +638,7 @@ export function useQuoteBuilderModel() {
       messages,
       collectedJobData,
       sitePhotos,
-      workLogs,
+      workLogUploads,
       formVoiceTranscript,
       generateMutation,
     ],
@@ -641,13 +679,48 @@ export function useQuoteBuilderModel() {
     [lines],
   );
 
-  const handleWorkLogs = useCallback((files: FileList | null) => {
+  const uploadWorkLogFiles = useCallback(async (files: FileList | null) => {
     if (!files?.length) return;
-    setWorkLogs((prev) => [...prev, ...Array.from(files)]);
+    setWorkLogUploadError(null);
+    setWorkLogUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const fd = new FormData();
+        fd.set("file", file);
+        const res = await fetch("/api/onboarding/work-logs/upload", {
+          method: "POST",
+          body: fd,
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          workLog?: {
+            id: string;
+            fileName: string;
+            processingStatus: string;
+          };
+        };
+        if (!res.ok) {
+          throw new Error(
+            typeof data.error === "string"
+              ? data.error
+              : `Upload failed: ${file.name}`,
+          );
+        }
+        if (data.workLog) {
+          setWorkLogUploads((prev) => [...prev, data.workLog!]);
+        }
+      }
+    } catch (e) {
+      setWorkLogUploadError(
+        e instanceof Error ? e.message : "Work log upload failed",
+      );
+    } finally {
+      setWorkLogUploading(false);
+    }
   }, []);
 
-  const removeWorkLog = useCallback((name: string) => {
-    setWorkLogs((prev) => prev.filter((f) => f.name !== name));
+  const removeWorkLog = useCallback((id: string) => {
+    setWorkLogUploads((prev) => prev.filter((u) => u.id !== id));
   }, []);
 
   const handleSitePhotos = useCallback((files: FileList | null) => {
@@ -671,7 +744,8 @@ export function useQuoteBuilderModel() {
 
   const resetFlow = useCallback(async () => {
     setLines([]);
-    setWorkLogs([]);
+    setWorkLogUploads([]);
+    setWorkLogUploadError(null);
     setSitePhotos([]);
     setCollectedJobData({});
     setQuoteReady(false);
@@ -740,7 +814,10 @@ export function useQuoteBuilderModel() {
     lines,
     setLines,
     sitePhotos,
-    workLogs,
+    workLogUploads,
+    workLogUploadError,
+    workLogUploading,
+    uploadWorkLogFiles,
     messages,
     collectedJobData,
     quoteReady,
@@ -789,7 +866,6 @@ export function useQuoteBuilderModel() {
     removeLine,
     addLine,
     totalAmount,
-    handleWorkLogs,
     removeWorkLog,
     handleSitePhotos,
     removePhoto,
@@ -800,6 +876,8 @@ export function useQuoteBuilderModel() {
     sendError,
     isHydrating,
     persistError,
+    saveDraft,
+    isSavingDraft,
   };
 }
 

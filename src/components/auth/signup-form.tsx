@@ -14,7 +14,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { createClient } from "@/lib/supabase/client";
 import {
   signupCredentialsSchema,
   type SignupCredentialsValues,
@@ -42,34 +41,37 @@ export function SignupForm({ redirectTo = "/onboarding" }: SignupFormProps) {
     setServerError(null);
     setServerMessage(null);
 
-    const supabase = createClient();
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password,
+        }),
+      });
 
-    const confirmNext = encodeURIComponent(redirectTo);
-    const { data, error } = await supabase.auth.signUp({
-      email: values.email,
-      password: values.password,
-      options: {
-        emailRedirectTo: origin
-          ? `${origin}/api/auth/confirm?next=${confirmNext}`
-          : undefined,
-      },
-    });
+      const json = (await res.json()) as { hasSession?: boolean; error?: string };
 
-    if (error) {
-      setServerError(error.message);
-      return;
+      if (!res.ok || json.error) {
+        setServerError(json.error ?? "Something went wrong. Please try again.");
+        return;
+      }
+
+      if (json.hasSession) {
+        // Email confirmation is disabled — session was created immediately.
+        router.push(redirectTo);
+        router.refresh();
+        return;
+      }
+
+      // Normal path: confirmation email sent.
+      setServerMessage(
+        "Success! Please check your email to verify your account.",
+      );
+    } catch {
+      setServerError("Network error. Please check your connection and try again.");
     }
-
-    if (data.session) {
-      router.push(redirectTo);
-      router.refresh();
-      return;
-    }
-
-    setServerMessage(
-      "Success! Please check your email to verify your account.",
-    );
   }
 
   return (

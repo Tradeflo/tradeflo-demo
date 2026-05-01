@@ -49,7 +49,6 @@ type IntakeStepProps = { model: QuoteBuilderModel };
 
 export function IntakeStep({ model }: IntakeStepProps) {
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const wlInputRef = useRef<HTMLInputElement>(null);
   const [chatInput, setChatInput] = useState("");
 
   const {
@@ -75,9 +74,6 @@ export function IntakeStep({ model }: IntakeStepProps) {
     sitePhotos,
     handleSitePhotos,
     removePhoto,
-    workLogs,
-    handleWorkLogs,
-    removeWorkLog,
     formVoiceTranscript,
     setFormVoiceTranscript,
     quoteNum,
@@ -580,10 +576,11 @@ export function IntakeStep({ model }: IntakeStepProps) {
         />
       </div>
 
+      {/*
       <div className="card" style={{ marginTop: 4 }}>
         <div className="card-label">
           Work log calibration
-          {workLogs.length > 0 ? (
+          {workLogUploads.length > 0 ? (
             <span className="badge badge-green">Active</span>
           ) : null}
         </div>
@@ -633,13 +630,19 @@ export function IntakeStep({ model }: IntakeStepProps) {
             </div>
           </div>
         </div>
+        {workLogUploadError ? (
+          <Alert variant="destructive" style={{ marginTop: 12 }}>
+            <AlertDescription>{workLogUploadError}</AlertDescription>
+          </Alert>
+        ) : null}
         <div style={{ marginTop: 12 }}>
-          {workLogs.length === 0 ? (
+          {workLogUploads.length === 0 ? (
             <>
               <button
                 type="button"
                 className="worklog-zone"
                 onClick={() => wlInputRef.current?.click()}
+                disabled={workLogUploading}
               >
                 <div
                   style={{ fontSize: 18, marginBottom: 6, color: "var(--text3)" }}
@@ -653,7 +656,7 @@ export function IntakeStep({ model }: IntakeStepProps) {
                     fontWeight: 500,
                   }}
                 >
-                  Upload work logs
+                  {workLogUploading ? "Uploading…" : "Upload work logs"}
                 </div>
                 <div
                   style={{
@@ -662,17 +665,17 @@ export function IntakeStep({ model }: IntakeStepProps) {
                     marginTop: 3,
                   }}
                 >
-                  PDF invoices, quotes, or CSV
+                  PDF, .xlsx, .xls, .csv, or .txt · max 10 MB per file
                 </div>
               </button>
               <input
                 ref={wlInputRef}
                 type="file"
-                accept=".pdf,.csv,.txt,.xlsx"
+                accept=".pdf,.csv,.txt,.xlsx,.xls"
                 multiple
                 style={{ display: "none" }}
                 onChange={(e) => {
-                  handleWorkLogs(e.target.files);
+                  void uploadWorkLogFiles(e.target.files);
                   e.target.value = "";
                 }}
               />
@@ -692,8 +695,8 @@ export function IntakeStep({ model }: IntakeStepProps) {
                     fontWeight: 600,
                   }}
                 >
-                  {workLogs.length} work log{workLogs.length > 1 ? "s" : ""}{" "}
-                  uploaded
+                  {workLogUploads.length} work log
+                  {workLogUploads.length > 1 ? "s" : ""} uploaded
                 </div>
                 <div
                   style={{
@@ -707,19 +710,30 @@ export function IntakeStep({ model }: IntakeStepProps) {
                 </div>
               </div>
               <div className="wl-list show">
-                {workLogs.map((f) => (
-                  <div key={f.name} className="wl-item">
+                {workLogUploads.map((u) => (
+                  <div key={u.id} className="wl-item">
                     <span style={{ fontSize: 13, fontWeight: 500 }}>
-                      {f.name}
+                      {u.fileName}
                     </span>
-                    <span style={{ fontSize: 12, color: "var(--green)" }}>
-                      ✓ Ready
-                    </span>
+                    {u.processingStatus === "complete" ? (
+                      <span style={{ fontSize: 12, color: "var(--green)" }}>
+                        ✓ Ready
+                      </span>
+                    ) : u.processingStatus === "failed" ? (
+                      <span style={{ fontSize: 12, color: "var(--amber)" }}>
+                        No text extracted
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 12, color: "var(--text3)" }}>
+                        {u.processingStatus}
+                      </span>
+                    )}
                     <button
                       type="button"
                       className="wl-remove"
-                      aria-label={`Remove ${f.name}`}
-                      onClick={() => removeWorkLog(f.name)}
+                      aria-label={`Remove ${u.fileName}`}
+                      onClick={() => removeWorkLog(u.id)}
+                      disabled={workLogUploading}
                     >
                       ×
                     </button>
@@ -730,6 +744,7 @@ export function IntakeStep({ model }: IntakeStepProps) {
           )}
         </div>
       </div>
+      */}
     </>
   );
 }
