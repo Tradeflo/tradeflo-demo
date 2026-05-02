@@ -226,10 +226,7 @@ export function OnboardingApp() {
               : "complete";
         setUploads((prev) => [...prev, { id, fileName, processingStatus }]);
       }
-      const s = await refreshStatus();
-      if (s?.steps.workLogs.completed) {
-        setStep(2);
-      }
+      await refreshStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -618,14 +615,25 @@ export function OnboardingApp() {
                 >
                   Back
                 </button>
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => void onSkipWorkLogs()}
-                  disabled={uploading || skipping}
-                >
-                  {skipping ? "Skipping…" : "Skip for now"}
-                </button>
+                {uploads.length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => setStep(2)}
+                    disabled={uploading}
+                  >
+                    Continue
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => void onSkipWorkLogs()}
+                    disabled={uploading || skipping}
+                  >
+                    {skipping ? "Skipping…" : "Skip for now"}
+                  </button>
+                )}
               </div>
             </div>
           ) : null}
