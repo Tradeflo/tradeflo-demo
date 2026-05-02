@@ -226,7 +226,10 @@ export function OnboardingApp() {
               : "complete";
         setUploads((prev) => [...prev, { id, fileName, processingStatus }]);
       }
-      await refreshStatus();
+      // Refresh status data without auto-navigating to the next step.
+      // The user should stay on this screen to upload more files or click "Continue".
+      const s = await fetchStatus();
+      if (s) setStatus(s);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
