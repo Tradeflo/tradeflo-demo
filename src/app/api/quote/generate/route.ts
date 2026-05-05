@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { getSessionUser } from "@/lib/api/session";
 import { loadAggregatedWorkLogText } from "@/lib/onboarding/aggregated-work-log-text";
 import { buildQuoteGeneratePrompt } from "@/lib/quote-generation/build-prompt";
@@ -16,6 +17,9 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const billingBlock = await billingMutationBlockedResponse(user.id);
+  if (billingBlock) return billingBlock;
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(

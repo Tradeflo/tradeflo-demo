@@ -1,4 +1,5 @@
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
+import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { formatQuoteResponse } from "@/lib/api/quotes-format";
 import type { QuoteWithVersionRows } from "@/lib/api/quotes-format";
 import { getSessionUser } from "@/lib/api/session";
@@ -22,6 +23,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function POST(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
+
+  const billingBlock = await billingMutationBlockedResponse(user.id);
+  if (billingBlock) return billingBlock;
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return jsonError("ANTHROPIC_API_KEY is not configured", 500);

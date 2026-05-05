@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
+import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { getSessionUser } from "@/lib/api/session";
 import {
   extractWorkLogText,
@@ -37,6 +38,9 @@ function fileNameFromBlob(blob: Blob): string {
 export async function POST(request: Request) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
+
+  const billingBlock = await billingMutationBlockedResponse(user.id);
+  if (billingBlock) return billingBlock;
 
   let form: FormData;
   try {

@@ -1,5 +1,7 @@
 import { randomBytes } from "crypto";
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
+import { billingMutationBlockedResponse } from "@/lib/billing/gate";
+import { getPublicSiteOrigin } from "@/lib/env/public-site-origin";
 import { getSessionUser } from "@/lib/api/session";
 import { parseQuoteDraftPayload } from "@/lib/quotes/draft-payload";
 import { quoteSendValidationError } from "@/lib/quotes/send-validation";
@@ -17,7 +19,7 @@ function newApprovalToken(): string {
 
 function approvalPublicUrl(request: Request, token: string): string {
   const path = `/approve/${token}`;
-  const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  const base = getPublicSiteOrigin(request);
   if (base) {
     return `${base}${path}`;
   }
@@ -28,6 +30,9 @@ function approvalPublicUrl(request: Request, token: string): string {
 export async function POST(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
+
+  const billingBlock = await billingMutationBlockedResponse(user.id);
+  if (billingBlock) return billingBlock;
 
   const { id } = await context.params;
   const idParsed = quoteIdParamSchema.safeParse(id);
