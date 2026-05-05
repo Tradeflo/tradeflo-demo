@@ -3,6 +3,11 @@ import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
 import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { getPublicSiteOrigin } from "@/lib/env/public-site-origin";
 import { getSessionUser } from "@/lib/api/session";
+import {
+  deliverSentQuoteNotifications,
+  quoteDeliveryConfigError,
+} from "@/lib/quote-delivery/deliver-quote";
+import type { QuoteDraftPayloadV1 } from "@/lib/quotes/draft-payload";
 import { parseQuoteDraftPayload } from "@/lib/quotes/draft-payload";
 import { quoteSendValidationError } from "@/lib/quotes/send-validation";
 import {
@@ -10,6 +15,9 @@ import {
   quotesSendBodySchema,
 } from "@/lib/schemas/quotes";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+export const runtime = "nodejs";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -25,6 +33,36 @@ function approvalPublicUrl(request: Request, token: string): string {
   }
   const u = new URL(request.url);
   return `${u.protocol}//${u.host}${path}`;
+}
+
+async function rollbackQuoteToDraft(params: {
+  supabase: SupabaseClient;
+  quoteId: string;
+  userId: string;
+  headVersionId: string;
+  /** Draft-shaped payload prior to marking sent — `sentDone` forced false on save. */
+  draftSnapshot: QuoteDraftPayloadV1;
+}) {
+  const { supabase, quoteId, userId, headVersionId, draftSnapshot } = params;
+
+  await supabase
+    .from("quote_versions")
+    .update({
+      status: "draft",
+      sent_at: null,
+      approval_token: null,
+      payload: {
+        ...draftSnapshot,
+        sentDone: false,
+      } as unknown as Record<string, unknown>,
+    })
+    .eq("id", headVersionId);
+
+  await supabase
+    .from("quotes")
+    .update({ status: "draft" })
+    .eq("id", quoteId)
+    .eq("user_id", userId);
 }
 
 export async function POST(request: Request, context: RouteContext) {
@@ -102,14 +140,40 @@ export async function POST(request: Request, context: RouteContext) {
     return jsonError(validation, 400);
   }
 
+  const cfgErr = quoteDeliveryConfigError(parsedPayload.delivery);
+  if (cfgErr) {
+    return jsonError(cfgErr, 503);
+  }
+
   const note =
     sendParsed.data.personalNote !== undefined
       ? sendParsed.data.personalNote
       : parsedPayload.personalNote;
 
+  const { data: profile } = await supabase
+    .from("user_info")
+    .select("business_name, full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const contractorLabel =
+    (typeof profile?.business_name === "string"
+      ? profile.business_name.trim()
+      : "") ||
+    (typeof profile?.full_name === "string"
+      ? profile.full_name.trim()
+      : "") ||
+    "Tradeflo contractor";
+
+  const draftSnapshot: QuoteDraftPayloadV1 = {
+    ...parsedPayload,
+    personalNote: note ?? parsedPayload.personalNote,
+    sentDone: false,
+  };
+
   const finalPayload = {
     ...parsedPayload,
-    personalNote: note,
+    personalNote: note ?? parsedPayload.personalNote,
     sentDone: true,
   };
 
@@ -168,6 +232,27 @@ export async function POST(request: Request, context: RouteContext) {
 
   const approvalLink = approvalPublicUrl(request, token);
 
+  const deliver = await deliverSentQuoteNotifications({
+    payload: finalPayload as QuoteDraftPayloadV1,
+    approvalLink,
+    contractorLabel,
+    personalNoteForCustomer: note,
+  });
+
+  if (!deliver.ok) {
+    await rollbackQuoteToDraft({
+      supabase,
+      quoteId,
+      userId: user.id,
+      headVersionId: headVersion.id,
+      draftSnapshot,
+    });
+    return jsonError(
+      `Quote could not be delivered (${deliver.error}). The quote was rolled back to draft — fix delivery settings or try again.`,
+      502,
+    );
+  }
+
   return jsonOk({
     data: {
       status: "sent" as const,
@@ -175,6 +260,14 @@ export async function POST(request: Request, context: RouteContext) {
       approvalLink,
       quoteVersionId: headVersion.id,
       versionNumber: headVersion.version_number,
+      delivery: {
+        email:
+          parsedPayload.delivery === "email" ||
+          parsedPayload.delivery === "both",
+        sms:
+          parsedPayload.delivery === "sms" ||
+          parsedPayload.delivery === "both",
+      },
     },
   });
 }

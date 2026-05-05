@@ -1,4 +1,5 @@
 import type { QuoteDraftPayloadV1 } from "@/lib/quotes/draft-payload";
+import { normalizePhoneToE164NANP } from "@/lib/quote-delivery/phone-e164";
 import { z } from "zod";
 
 const customerEmailSchema = z.email();
@@ -27,6 +28,9 @@ export function quoteSendValidationError(d: QuoteDraftPayloadV1): string | null 
   if (d.delivery === "sms" || d.delivery === "both") {
     if (!phone) {
       return "Customer phone is required for SMS delivery.";
+    }
+    if (!normalizePhoneToE164NANP(d.cphone)) {
+      return "Enter a valid phone number for SMS (10 digits or +1 …).";
     }
   }
 
