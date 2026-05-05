@@ -9,6 +9,10 @@ export const onboardingBusinessBodySchema = z
     city: z.string().min(1).max(100),
     province: z.string().min(1).max(40),
     tradeType: z.string().min(1).max(100),
+    materialsMarkupPercent: z
+      .number()
+      .min(0, "Markup must be at least 0")
+      .max(500, "Markup cannot exceed 500%"),
     hstNumber: z.string().max(80).optional(),
   })
   .strict();

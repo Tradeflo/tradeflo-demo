@@ -1,4 +1,5 @@
 import type { QuoteGenerateRequest } from "@/lib/schemas/quote-builder";
+import type { MaterialsPricingContext } from "@/lib/quote-generation/materials-pricing-context";
 
 export type BuildQuotePromptInput = Pick<
   QuoteGenerateRequest,
@@ -11,6 +12,7 @@ export type BuildQuotePromptInput = Pick<
 > & {
   workLogContext: string;
   sitePhotoCount: number;
+  materialsPricing: MaterialsPricingContext;
 };
 
 export function buildQuoteGeneratePrompt(input: BuildQuotePromptInput): string {
@@ -48,8 +50,36 @@ export function buildQuoteGeneratePrompt(input: BuildQuotePromptInput): string {
   if (input.sitePhotoCount > 0) {
     prompt += `The contractor has also provided ${input.sitePhotoCount} site photo(s). Use what you can see in the images to improve quote accuracy.\n\n`;
   }
+
+  const mp = input.materialsPricing;
+  const markupPct = mp.profileMarkupPercent;
+  prompt += "MATERIAL PRICING (reference retail + optional profile markup):\n";
+  prompt += `- Contractor trade (for catalog filter): ${mp.trade ?? "(not set — no catalog lookup)"}\n`;
+  if (markupPct != null) {
+    prompt += `- Contractor materials markup on file: ${markupPct}% (applied on top of reference retail below).\n`;
+    prompt +=
+      `- For each material line matched to reference data below: unit price = round to 2 decimals: (base_retail_price × (1 + markup/100)) per catalog unit; set "source" to "industry_average".\n`;
+  } else {
+    prompt +=
+      `- No contractor materials markup stored on profile yet. For each material line matched to reference data below: use unit price = round(base_retail_price, 2) per catalog unit (no uplift); set "source" to "industry_average".\n`;
+  }
+  prompt += `- If no catalog row fits: estimate price from context and set "source" to "estimated".\n`;
   prompt +=
-    'For each line item, optionally set "source": one of "industry_average" (typical regional market), "estimated" (educated assumption), or "your_rate" (matches contractor/context). Default to "estimated" when unsure.\n' +
+    `- Use "your_rate" for labour or when pricing clearly follows the contractor work history narrative (not catalogue retail).\n`;
+
+  if (mp.catalog.length === 0) {
+    prompt +=
+      "- Reference catalog for this trade: (empty — client-maintained DB not populated yet). Use estimated material pricing.\n\n";
+  } else {
+    prompt +=
+      (markupPct != null
+        ? "- Reference retail rows (JSON). base_retail_price is before markup; apply markup above.\n"
+        : "- Reference retail rows (JSON). Use base_retail_price as sell price when matched (see rules above).\n") +
+      JSON.stringify(mp.catalog) +
+      "\n\n";
+  }
+
+  prompt +=
     'Respond ONLY with valid JSON:\n{"lineItems":[{"description":"...","quantity":1,"unitPrice":0,"total":0,"source":"estimated"}],"total":0,"rationale":"Brief pricing explanation","notes":"Important conditions"}';
 
   return prompt;

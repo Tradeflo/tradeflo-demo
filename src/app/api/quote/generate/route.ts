@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/api/session";
 import { loadAggregatedWorkLogText } from "@/lib/onboarding/aggregated-work-log-text";
 import { buildQuoteGeneratePrompt } from "@/lib/quote-generation/build-prompt";
+import { loadMaterialsPricingContext } from "@/lib/quote-generation/materials-pricing-context";
 import { runAnthropicQuoteGeneration } from "@/lib/quote-generation/run-anthropic-quote";
 import { quoteGenerateRequestSchema } from "@/lib/schemas/quote-builder";
 import { createClient } from "@/lib/supabase/server";
@@ -70,7 +71,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const workLogContext = await loadAggregatedWorkLogText(supabase, user.id);
+  const [workLogContext, materialsPricing] = await Promise.all([
+    loadAggregatedWorkLogText(supabase, user.id),
+    loadMaterialsPricingContext(supabase, user.id),
+  ]);
 
   const prompt = buildQuoteGeneratePrompt({
     mode: input.mode,
@@ -81,6 +85,7 @@ export async function POST(req: Request) {
     workLogCount: input.workLogCount,
     workLogContext,
     sitePhotoCount: input.sitePhotos.length,
+    materialsPricing,
   });
 
   try {

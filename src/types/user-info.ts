@@ -10,6 +10,7 @@ export type UserInfoRow = {
   email: string | null;
   location: string | null;
   trade: string | null;
+  materials_markup_percent: number | null;
   created_at: string;
   updated_at: string;
 };

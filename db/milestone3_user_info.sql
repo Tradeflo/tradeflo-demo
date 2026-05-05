@@ -7,7 +7,7 @@ alter table public.user_info
   add column if not exists materials_markup_percent numeric(6, 2);
 
 comment on column public.user_info.materials_markup_percent is
-  'Default materials markup % applied to reference DB prices; onboarding capture (M3). Null = use app default until set.';
+  'Default materials markup % applied to reference DB prices; onboarding capture (M3). Null until saved.';
 
 alter table public.user_info drop constraint if exists user_info_materials_markup_percent_check;
 alter table public.user_info add constraint user_info_materials_markup_percent_check

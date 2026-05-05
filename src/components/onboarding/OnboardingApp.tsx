@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { useRouter } from "next/navigation";
 import { QuoteFooter } from "@/components/quote-builder/QuoteFooter";
 import "@/components/quote-builder/quote-builder.css";
@@ -8,6 +14,12 @@ import { onboardingBusinessBodySchema } from "@/lib/schemas/onboarding";
 import type { OnboardingBusinessBody } from "@/lib/schemas/onboarding";
 import { OnboardingHeader } from "./OnboardingHeader";
 import { OnboardingProgress } from "./OnboardingProgress";
+
+/** Business step draft: markup empty until preset or typed value — no numeric default. */
+type OnboardingBusinessFormValues = Omit<
+  OnboardingBusinessBody,
+  "materialsMarkupPercent"
+> & { materialsMarkupPercent: number | "" };
 
 type OnboardingStatus = {
   completed: boolean;
@@ -17,7 +29,24 @@ type OnboardingStatus = {
     workLogs: { completed: boolean };
     ready: { completed: boolean };
   };
+  /** Server snapshot for the business step when still incomplete (`null` when done). */
+  businessPrefill: Partial<OnboardingBusinessBody> | null;
 };
+
+function mergeBusinessPrefillIntoState(
+  prefill: Partial<OnboardingBusinessBody> | null | undefined,
+  setBusiness: Dispatch<SetStateAction<OnboardingBusinessFormValues>>,
+) {
+  if (!prefill || Object.keys(prefill).length === 0) return;
+  setBusiness((prev) => ({
+    ...prev,
+    ...prefill,
+    materialsMarkupPercent:
+      typeof prefill.materialsMarkupPercent === "number"
+        ? prefill.materialsMarkupPercent
+        : prev.materialsMarkupPercent,
+  }));
+}
 
 const PROVINCES = [
   { value: "NL", label: "Newfoundland and Labrador" },
@@ -35,6 +64,20 @@ const PROVINCES = [
   { value: "NU", label: "Nunavut" },
 ] as const;
 
+const TYPICAL_MATERIAL_MARKUPS = [20, 25, 30, 35, 40] as const;
+
+function typicalMarkupPct(
+  n: number,
+): n is (typeof TYPICAL_MATERIAL_MARKUPS)[number] {
+  return (TYPICAL_MATERIAL_MARKUPS as readonly number[]).includes(n);
+}
+
+function materialsMarkupSelectValue(markup: number | ""): string {
+  if (markup === "") return "";
+  if (typicalMarkupPct(markup)) return String(markup);
+  return "custom";
+}
+
 type UploadRow = {
   id: string;
   fileName: string;
@@ -49,7 +92,7 @@ export function OnboardingApp() {
   const [status, setStatus] = useState<OnboardingStatus | null>(null);
   const [step, setStep] = useState(0);
 
-  const [business, setBusiness] = useState<OnboardingBusinessBody>({
+  const [business, setBusiness] = useState<OnboardingBusinessFormValues>({
     businessName: "",
     ownerName: "",
     phone: "",
@@ -57,6 +100,7 @@ export function OnboardingApp() {
     city: "",
     province: "NB",
     tradeType: "",
+    materialsMarkupPercent: "",
     hstNumber: "",
   });
   const [businessFieldErrors, setBusinessFieldErrors] = useState<
@@ -107,6 +151,7 @@ export function OnboardingApp() {
         const s = await fetchStatus();
         if (cancelled || !s) return;
         setStatus(s);
+        mergeBusinessPrefillIntoState(s.businessPrefill, setBusiness);
         applyStepFromStatus(s);
         setError(null);
       } catch (e) {
@@ -126,6 +171,7 @@ export function OnboardingApp() {
     const s = await fetchStatus();
     if (s) {
       setStatus(s);
+      mergeBusinessPrefillIntoState(s.businessPrefill, setBusiness);
       applyStepFromStatus(s);
     }
     return s;
@@ -134,12 +180,23 @@ export function OnboardingApp() {
   const onSaveBusiness = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusinessFieldErrors({});
-    const parsed = onboardingBusinessBodySchema.safeParse(business);
+    if (business.materialsMarkupPercent === "") {
+      setBusinessFieldErrors({
+        materialsMarkupPercent:
+          "Choose a quick-pick markup or enter a percentage (0–500).",
+      });
+      return;
+    }
+    const payload: OnboardingBusinessBody = {
+      ...business,
+      materialsMarkupPercent: business.materialsMarkupPercent,
+    };
+    const parsed = onboardingBusinessBodySchema.safeParse(payload);
     if (!parsed.success) {
       const fe: Partial<Record<keyof OnboardingBusinessBody, string>> = {};
       for (const iss of parsed.error.issues) {
         const k = iss.path[0];
-        if (typeof k === "string" && k in business && !fe[k as keyof OnboardingBusinessBody]) {
+        if (typeof k === "string" && k in payload && !fe[k as keyof OnboardingBusinessBody]) {
           fe[k as keyof OnboardingBusinessBody] = iss.message;
         }
       }
@@ -493,6 +550,105 @@ export function OnboardingApp() {
                       }}
                     >
                       {businessFieldErrors.tradeType}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="field">
+                  <label htmlFor="ob-markup-select">
+                    Default materials markup
+                  </label>
+                  <p
+                    className="help-text"
+                    style={{ marginTop: 4, marginBottom: 8 }}
+                  >
+                    Typical values are 20%–40%, or choose Custom for any other rate.
+                    This is saved to your profile and applied automatically on
+                    material line items whenever you generate a quote.
+                  </p>
+                  <select
+                    id="ob-markup-select"
+                    value={materialsMarkupSelectValue(business.materialsMarkupPercent)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setBusinessFieldErrors((fe) => {
+                        const next = { ...fe };
+                        delete next.materialsMarkupPercent;
+                        return next;
+                      });
+                      setBusiness((b) => {
+                        if (v === "") {
+                          return { ...b, materialsMarkupPercent: "" };
+                        }
+                        if (v === "custom") {
+                          return {
+                            ...b,
+                            materialsMarkupPercent:
+                              b.materialsMarkupPercent === ""
+                                ? ""
+                                : b.materialsMarkupPercent,
+                          };
+                        }
+                        return {
+                          ...b,
+                          materialsMarkupPercent: Number(v),
+                        };
+                      });
+                    }}
+                  >
+                    <option value="">Select markup…</option>
+                    {TYPICAL_MATERIAL_MARKUPS.map((pct) => (
+                      <option key={pct} value={String(pct)}>
+                        {pct}%
+                      </option>
+                    ))}
+                    <option value="custom">Custom…</option>
+                  </select>
+                  {materialsMarkupSelectValue(business.materialsMarkupPercent) ===
+                  "custom" ? (
+                    <div className="field" style={{ marginTop: 12 }}>
+                      <label htmlFor="ob-markup-custom">Custom (%)</label>
+                      <input
+                        id="ob-markup-custom"
+                        type="number"
+                        min={0}
+                        max={500}
+                        step={0.5}
+                        value={
+                          business.materialsMarkupPercent === ""
+                            ? ""
+                            : business.materialsMarkupPercent
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            setBusiness((b) => ({
+                              ...b,
+                              materialsMarkupPercent: "",
+                            }));
+                            return;
+                          }
+                          const n = parseFloat(raw);
+                          setBusiness((b) => ({
+                            ...b,
+                            materialsMarkupPercent: Number.isFinite(n)
+                              ? n
+                              : "",
+                          }));
+                        }}
+                        autoComplete="off"
+                      />
+                    </div>
+                  ) : null}
+                  {businessFieldErrors.materialsMarkupPercent ? (
+                    <p
+                      style={{
+                        fontSize: 13,
+                        color: "var(--red)",
+                        marginTop: 6,
+                      }}
+                    >
+                      {businessFieldErrors.materialsMarkupPercent}
                     </p>
                   ) : null}
                 </div>

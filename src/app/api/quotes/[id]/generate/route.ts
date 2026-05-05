@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/api/session";
 import { loadAggregatedWorkLogText } from "@/lib/onboarding/aggregated-work-log-text";
 import { parseQuoteDraftPayload } from "@/lib/quotes/draft-payload";
 import { buildQuoteGeneratePrompt } from "@/lib/quote-generation/build-prompt";
+import { loadMaterialsPricingContext } from "@/lib/quote-generation/materials-pricing-context";
 import { runAnthropicQuoteGeneration } from "@/lib/quote-generation/run-anthropic-quote";
 import {
   consumeQuoteAiGenerationSlot,
@@ -104,7 +105,10 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const workLogContext = await loadAggregatedWorkLogText(supabase, user.id);
+  const [workLogContext, materialsPricing] = await Promise.all([
+    loadAggregatedWorkLogText(supabase, user.id),
+    loadMaterialsPricingContext(supabase, user.id),
+  ]);
 
   const prompt = buildQuoteGeneratePrompt({
     mode: input.mode,
@@ -115,6 +119,7 @@ export async function POST(request: Request, context: RouteContext) {
     workLogCount: input.workLogCount,
     workLogContext,
     sitePhotoCount: input.sitePhotos.length,
+    materialsPricing,
   });
 
   let result: Awaited<ReturnType<typeof runAnthropicQuoteGeneration>>;
