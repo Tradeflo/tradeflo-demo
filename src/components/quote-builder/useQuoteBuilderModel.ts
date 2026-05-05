@@ -537,6 +537,7 @@ export function useQuoteBuilderModel() {
           quantity: q,
           unitPrice: u,
           total: t,
+          source: item.source ?? "estimated",
         };
       });
       setLines(nextLines);

@@ -1,6 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
 import {
+  type QuoteLineItem,
   quoteAiResponseSchema,
   sitePhotoInputSchema,
 } from "@/lib/schemas/quote-builder";
@@ -8,12 +9,7 @@ import type { z } from "zod";
 
 export type SitePhotoInput = z.infer<typeof sitePhotoInputSchema>;
 
-export type GeneratedLineItem = {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-};
+export type GeneratedLineItem = QuoteLineItem;
 
 export async function runAnthropicQuoteGeneration(input: {
   prompt: string;
@@ -57,6 +53,7 @@ export async function runAnthropicQuoteGeneration(input: {
       quantity: q,
       unitPrice: u,
       total: t,
+      source: item.source,
     };
   });
 

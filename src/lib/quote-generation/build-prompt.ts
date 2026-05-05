@@ -49,7 +49,8 @@ export function buildQuoteGeneratePrompt(input: BuildQuotePromptInput): string {
     prompt += `The contractor has also provided ${input.sitePhotoCount} site photo(s). Use what you can see in the images to improve quote accuracy.\n\n`;
   }
   prompt +=
-    'Respond ONLY with valid JSON:\n{"lineItems":[{"description":"...","quantity":1,"unitPrice":0,"total":0}],"total":0,"rationale":"Brief pricing explanation","notes":"Important conditions"}';
+    'For each line item, optionally set "source": one of "industry_average" (typical regional market), "estimated" (educated assumption), or "your_rate" (matches contractor/context). Default to "estimated" when unsure.\n' +
+    'Respond ONLY with valid JSON:\n{"lineItems":[{"description":"...","quantity":1,"unitPrice":0,"total":0,"source":"estimated"}],"total":0,"rationale":"Brief pricing explanation","notes":"Important conditions"}';
 
   return prompt;
 }

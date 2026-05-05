@@ -37,12 +37,29 @@ export const quoteGenerateRequestSchema = z.object({
 
 export type QuoteGenerateRequest = z.infer<typeof quoteGenerateRequestSchema>;
 
+/** SRS M3: how each line unit price was chosen (persisted + AI schema). */
+export const QUOTE_LINE_PRICE_SOURCE_VALUES = [
+  "industry_average",
+  "estimated",
+  "your_rate",
+] as const satisfies readonly [string, ...string[]];
+
+export type QuoteLinePriceSource =
+  (typeof QUOTE_LINE_PRICE_SOURCE_VALUES)[number];
+
+export const quoteLinePriceSourceSchema = z.enum(
+  QUOTE_LINE_PRICE_SOURCE_VALUES,
+);
+
 export const quoteLineItemSchema = z.object({
   description: z.string(),
   quantity: z.number(),
   unitPrice: z.number(),
   total: z.number(),
+  source: quoteLinePriceSourceSchema.optional().default("estimated"),
 });
+
+export type QuoteLineItem = z.infer<typeof quoteLineItemSchema>;
 
 export const quoteAiResponseSchema = z.object({
   lineItems: z.array(quoteLineItemSchema),

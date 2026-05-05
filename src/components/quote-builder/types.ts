@@ -1,8 +1,12 @@
+import type { QuoteLinePriceSource } from "@/lib/schemas/quote-builder";
+
 export type LineItem = {
   description: string;
   quantity: number;
   unitPrice: number;
   total: number;
+  /** Persisted quote line price origin (SRS M3). Omitted ⇒ `estimated`. */
+  source?: QuoteLinePriceSource;
 };
 
 export type SitePhoto = {
