@@ -7,9 +7,14 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
+/** Client-confirmed billing config (single plan launch). */
+const STRIPE_TRIAL_DAYS = 14;
+
 /**
  * Starts a Stripe Checkout subscription session. Client redirects to returned `url`.
  * Env: STRIPE_PRICE_ID (recurring Price id).
+ *
+ * Plan: 14-day trial (CC required), auto-converts to paid; Canadian GST/HST via Stripe Tax.
  */
 export async function POST(request: Request) {
   const { user } = await getSessionUser();
@@ -48,17 +53,29 @@ export async function POST(request: Request) {
   const params: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}/?billing_success=1&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/?billing_cancel=1`,
+    success_url: `${origin}/billing?billing_success=1&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/billing?billing_cancel=1`,
     client_reference_id: user.id,
     customer: stripeCustomerId,
     customer_email:
       !stripeCustomerId && user.email ? user.email : undefined,
+    payment_method_collection: "always",
+    automatic_tax: { enabled: true },
+    tax_id_collection: { enabled: true },
+    billing_address_collection: "required",
     subscription_data: {
+      trial_period_days: STRIPE_TRIAL_DAYS,
+      trial_settings: {
+        end_behavior: { missing_payment_method: "cancel" },
+      },
       metadata: { supabase_user_id: user.id },
     },
     metadata: { supabase_user_id: user.id },
   };
+
+  if (stripeCustomerId) {
+    params.customer_update = { address: "auto", name: "auto" };
+  }
 
   const session = await stripe.checkout.sessions.create(params);
 
