@@ -132,21 +132,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .chat-send:hover{background:#333}
 .chat-send:disabled{opacity:0.4;cursor:not-allowed}
 
-/* WORK LOG */
-.worklog-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:22px 20px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--surface)}
-.worklog-zone:hover{border-color:var(--border-strong);background:var(--white)}
-.worklog-zone.loaded{border-style:solid;border-color:var(--green-border);background:var(--green-bg);cursor:default}
-.wl-list{margin-top:12px;display:none}
-.wl-list.show{display:block}
-.photo-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.photo-thumb{width:64px;height:64px;border-radius:var(--radius);object-fit:cover;border:1.5px solid var(--border);cursor:pointer;transition:opacity 0.15s}
-.photo-thumb:hover{opacity:0.75}
-.photo-add{width:64px;height:64px;border-radius:var(--radius);border:2px dashed var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;color:var(--text3);transition:all 0.15s;flex-shrink:0}
-.photo-add:hover{border-color:var(--border-strong);background:var(--white);color:var(--text2)}
-.wl-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;font-size:13px}
-.wl-remove{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:2px 6px}
-.wl-remove:hover{color:var(--red)}
-
 /* SPINNER */
 .spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0}
 
@@ -161,15 +146,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .total-num{font-size:28px;font-weight:600;color:var(--text);letter-spacing:-0.02em}
 .ai-rationale{background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:var(--radius);padding:14px 16px;margin-top:14px;font-size:13px;color:var(--blue);line-height:1.7;display:none}
 .ai-rationale.show{display:block}
-
-/* KENT PANEL */
-.kent-card{border:1.5px dashed var(--amber-border);background:var(--amber-bg)}
-.kent-table{width:100%;border-collapse:collapse;font-size:13px}
-.kent-table th{font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber);padding:9px 12px;text-align:left;background:rgba(251,191,36,0.12);border-bottom:1px solid var(--amber-border)}
-.kent-table th:last-child{text-align:right}
-.kent-table td{padding:9px 12px;border-bottom:1px solid var(--amber-border);color:var(--text2)}
-.kent-table td:last-child{text-align:right;font-weight:600;color:var(--text)}
-.kent-table tr:last-child td{border-bottom:none}
 
 /* PHONE */
 .phone-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;display:flex;justify-content:center;margin-bottom:16px}
@@ -336,43 +312,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
       </div>
     </div>
 
-    <!-- SITE PHOTOS (shared) -->
-    <div class="card" style="margin-top:4px">
-      <div class="card-label">
-        Site photos
-        <span class="badge badge-blue" id="photo-badge" style="display:none">Added</span>
-      </div>
-      <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">Add photos of the job site to improve quote accuracy. AI will factor in what it sees.</p>
-      <div class="photo-strip" id="photo-strip">
-        <div class="photo-add" id="photo-add-btn" onclick="document.getElementById('photo-input').click()">+</div>
-      </div>
-      <input type="file" id="photo-input" accept="image/*" multiple style="display:none"/>
-    </div>
-
-    <!-- WORK LOG CALIBRATION (shared) -->
-    <div class="card" style="margin-top:4px">
-      <div class="card-label">
-        Work log calibration
-        <span class="badge badge-green" id="wl-badge" style="display:none">Active</span>
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 16px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--radius)">
-        <div style="width:9px;height:9px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:4px;animation:livepulse 2s infinite"></div>
-        <div>
-          <div style="font-size:14px;font-weight:600;color:var(--green);margin-bottom:4px">AI calibrated from your job history</div>
-          <div style="font-size:13px;color:var(--green);line-height:1.6;opacity:0.85">Previous invoices and work logs applied. Pricing calibrated to your real numbers — not industry averages.</div>
-        </div>
-      </div>
-      <div style="margin-top:12px">
-        <div class="worklog-zone" id="wl-zone" onclick="document.getElementById('wl-input').click()">
-          <div style="font-size:18px;margin-bottom:6px;color:var(--text3)">&#8679;</div>
-          <div style="font-size:14px;color:var(--text2);font-weight:500">Upload work logs</div>
-          <div style="font-size:13px;color:var(--text3);margin-top:3px">PDF invoices, quotes, or CSV</div>
-        </div>
-        <input type="file" id="wl-input" accept=".pdf,.csv,.txt,.xlsx" multiple style="display:none"/>
-        <div class="wl-list" id="wl-list"></div>
-      </div>
-    </div>
-
   </div>
 
   <!-- ── STEP 2: QUOTE REVIEW ── -->
@@ -388,7 +327,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
       <div class="card">
         <div class="card-label">
           Line items
-          <span class="badge badge-green" id="calib-badge" style="display:none">Work log calibrated</span>
           <span class="badge badge-blue">AI generated</span>
         </div>
         <div class="ql-head">
@@ -407,38 +345,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 
       <div class="ai-rationale" id="ai-rationale"></div>
 
-      <!-- KENT PRICING PANEL -->
-      <div class="card kent-card">
-        <div class="card-label" style="border-bottom-color:var(--amber-border);color:var(--amber)">
-          Supplier pricing &mdash; Kent Building Supplies
-          <span class="badge badge-amber">Coming soon</span>
-        </div>
-        <p style="font-size:13px;color:var(--amber);line-height:1.6;margin-bottom:14px;opacity:0.9">Live material pricing from Kent will be pulled automatically each day and applied directly to your quotes.</p>
-        <table class="kent-table">
-          <thead><tr><th>Material</th><th style="text-align:right">Unit</th><th style="text-align:right">Price</th></tr></thead>
-          <tbody>
-            <tr><td>James Hardie HardiePlank Siding</td><td style="text-align:right;color:var(--text3)">lin ft</td><td>$4.87</td></tr>
-            <tr><td>OSB Sheathing 7/16 in. 4x8</td><td style="text-align:right;color:var(--text3)">sheet</td><td>$22.47</td></tr>
-            <tr><td>Tyvek HomeWrap 9ft x 100ft</td><td style="text-align:right;color:var(--text3)">roll</td><td>$87.50</td></tr>
-            <tr><td>2x6 KD SPF Framing Lumber 12ft</td><td style="text-align:right;color:var(--text3)">each</td><td>$11.47</td></tr>
-          </tbody>
-        </table>
-        <p style="font-size:12px;color:var(--amber);margin-top:12px;opacity:0.75">Pending supplier integration. Live sync applies automatically once partnership is confirmed.</p>
-      </div>
-
       <div class="card">
         <div class="card-label">Notes on quote</div>
         <div class="field"><textarea id="quote-notes">Quote valid for 30 days. Pricing assumes standard site access. Final scope confirmed on-site before work begins.</textarea></div>
-      </div>
-
-      <div class="card">
-        <div class="card-label">Edit with voice</div>
-        <p class="help-text">Say something like "Remove the scaffolding line" or "Change labour to $2,800"</p>
-        <div class="voice-bar" id="edit-voice-btn">
-          <div class="vdot"></div>
-          <span class="voice-bar-lbl" id="edit-voice-lbl">Tap to record edit</span>
-        </div>
-        <div class="voice-transcript" id="edit-voice-transcript"></div>
       </div>
 
       <div class="error-box" id="quote-error"></div>
@@ -510,14 +419,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 </main>
 
 <footer class="footer">
-  <a href="https://tradefloai.ca" target="_blank">Tradeflo AI</a> &nbsp;&middot;&nbsp; zane@tradefloai.ca &nbsp;&middot;&nbsp; 506-259-0537
+  <a href="https://tradefloai.ca" target="_blank">Tradeflo AI</a> &nbsp;&middot;&nbsp; hello@tradefloai.ca
 </footer>
 </div>
 
 <script>
 var lines = [];
-var sitePhotos = [];
-var workLogs = [];
 var conversationHistory = [];
 var collectedJobData = {};
 var currentMode = 'chat';
@@ -601,94 +508,6 @@ function makeVoiceBtn(btnId, lblId, onResult, transcriptId) {
     final='';
     voiceRec.start();
   };
-}
-
-// ── WORK LOGS ─────────────────────────────────────────────────
-function handleWorkLogs(files) {
-  var zone=document.getElementById('wl-zone');
-  var list=document.getElementById('wl-list');
-  var badge=document.getElementById('wl-badge');
-
-  Array.from(files).forEach(function(f){
-    workLogs.push(f);
-    var item=document.createElement('div'); item.className='wl-item';
-    item.innerHTML='<span style="font-size:13px;font-weight:500">'+f.name+'</span>'+
-      '<span style="font-size:12px;color:var(--green)">&#10003; Ready</span>'+
-      '<button class="wl-remove" data-name="'+f.name+'">&times;</button>';
-    list.appendChild(item);
-  });
-
-  if(workLogs.length>0){
-    zone.className='worklog-zone loaded'; zone.onclick=null;
-    zone.innerHTML='<div style="font-size:18px;margin-bottom:6px;color:var(--green)">&#10003;</div>'+
-      '<div style="font-size:14px;color:var(--green);font-weight:600">'+workLogs.length+' work log'+(workLogs.length>1?'s':'')+' uploaded</div>'+
-      '<div style="font-size:13px;color:var(--green);margin-top:3px;opacity:0.8">AI calibrating to your real numbers</div>';
-    list.className='wl-list show'; badge.style.display='inline-flex';
-    document.getElementById('calib-badge').style.display='inline-flex';
-  }
-
-  list.querySelectorAll('.wl-remove').forEach(function(btn){
-    btn.onclick=function(e){
-      e.stopPropagation();
-      var name=this.getAttribute('data-name');
-      workLogs=workLogs.filter(function(f){return f.name!==name;});
-      this.closest('.wl-item').remove();
-      if(workLogs.length===0){
-        zone.className='worklog-zone';
-        zone.innerHTML='<div style="font-size:18px;margin-bottom:6px;color:var(--text3)">&#8679;</div>'+
-          '<div style="font-size:14px;color:var(--text2);font-weight:500">Upload work logs</div>'+
-          '<div style="font-size:13px;color:var(--text3);margin-top:3px">PDF invoices, quotes, or CSV</div>';
-        zone.onclick=function(){document.getElementById('wl-input').click();};
-        list.className='wl-list'; badge.style.display='none';
-        document.getElementById('calib-badge').style.display='none';
-      }
-    };
-  });
-}
-
-// ── SITE PHOTOS ──────────────────────────────────────────────
-function compressImage(file, callback) {
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var image = new Image();
-    image.onload = function() {
-      var canvas = document.createElement('canvas');
-      var MAX = 1024;
-      var w = image.width, h = image.height;
-      if(w > h) { if(w > MAX){ h = Math.round(h * MAX / w); w = MAX; } }
-      else { if(h > MAX){ w = Math.round(w * MAX / h); h = MAX; } }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(image, 0, 0, w, h);
-      var compressed = canvas.toDataURL('image/jpeg', 0.75);
-      callback(compressed.split(',')[1], 'image/jpeg');
-    };
-    image.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function handleSitePhotos(files) {
-  var strip = document.getElementById('photo-strip');
-  var badge = document.getElementById('photo-badge');
-  Array.from(files).forEach(function(file) {
-    if(sitePhotos.length >= 4) return;
-    compressImage(file, function(b64, mime) {
-      sitePhotos.push({ b64: b64, mime: mime, name: file.name });
-      var img = document.createElement('img');
-      img.src = 'data:' + mime + ';base64,' + b64;
-      img.className = 'photo-thumb';
-      img.title = 'Click to remove';
-      var idx = sitePhotos.length - 1;
-      img.onclick = function() {
-        sitePhotos.splice(idx, 1);
-        img.remove();
-        if(sitePhotos.length === 0) badge.style.display = 'none';
-      };
-      strip.insertBefore(img, document.getElementById('photo-add-btn'));
-      badge.style.display = 'inline-flex';
-      if(sitePhotos.length >= 4) document.getElementById('photo-add-btn').style.display = 'none';
-    });
-  });
 }
 
 // ── CHAT ─────────────────────────────────────────────────────
@@ -795,19 +614,13 @@ async function buildQuote(isChat) {
     prompt='You are an expert estimator for trades businesses in Atlantic Canada. Generate an accurate quote for this job.\n\nJOB DETAILS:\n'+JSON.stringify(d)+'\n\n';
   }
 
-    var hasLogs=workLogs.length>0;
-  var hasPhotos=sitePhotos.length>0;
-  prompt+=(hasLogs?'The contractor has uploaded '+workLogs.length+' work log file(s). Calibrate pricing to their real rates.':'Use standard Atlantic Canada market rates.');
-  if(hasPhotos) prompt+=' The contractor has also provided '+sitePhotos.length+' site photo(s). Use what you can see in the images to improve quote accuracy.';
+  prompt+='Use standard Atlantic Canada market rates.';
   prompt+='\n\nRespond ONLY with valid JSON:\n{"lineItems":[{"description":"...","quantity":1,"unitPrice":0,"total":0}],"total":0,"rationale":"Brief pricing explanation","notes":"Important conditions"}';
 
   try {
-    var msgContent = sitePhotos.length > 0
-      ? sitePhotos.map(function(p){ return {type:'image',source:{type:'base64',media_type:p.mime,data:p.b64}}; }).concat([{type:'text',text:prompt}])
-      : prompt;
     var resp=await fetch('/api/claude',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:msgContent}]})
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
     clearInterval(loadingInterval);
     if(!resp.ok) throw new Error('API error '+resp.status);
@@ -928,17 +741,6 @@ window.onload=function(){
     s.value=(s.value?s.value+'\n':'')+text;
   },'form-voice-transcript');
 
-  // Edit voice
-  makeVoiceBtn('edit-voice-btn','edit-voice-lbl',function(text){
-    var t=document.getElementById('edit-voice-transcript');
-    t.className='voice-transcript show';
-    t.textContent='Edit received: "'+text+'" \u2014 in the live app this applies automatically via AI.';
-  },'edit-voice-transcript');
-
-  // Work logs
-  document.getElementById('wl-input').onchange=function(){if(this.files&&this.files.length)handleWorkLogs(this.files);};
-  document.getElementById('photo-input').onchange=function(){if(this.files&&this.files.length)handleSitePhotos(this.files);};
-
   // Quote step
   document.getElementById('btn-addline').onclick=function(){lines.push({description:'New item',quantity:1,unitPrice:0,total:0});renderLines();};
   document.getElementById('btn-to-preview').onclick=function(){goTo(2);};
@@ -963,7 +765,7 @@ window.onload=function(){
     document.getElementById('sent-msg').textContent=fn+' has received their quote. You will be notified when they respond.';
   };
   document.getElementById('btn-reset').onclick=function(){
-    lines=[];workLogs=[];sitePhotos=[];conversationHistory=[];collectedJobData={};quoteReady=false;
+    lines=[];conversationHistory=[];collectedJobData={};quoteReady=false;
     quoteNum='QTE-'+Date.now().toString().slice(-6);
     document.getElementById('send-screen').style.display='block';
     document.getElementById('sent-screen').style.display='none';
