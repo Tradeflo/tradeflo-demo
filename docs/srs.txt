@@ -1,0 +1,209 @@
+1. Project Overview
+Build a production-ready backend for Tradeflo AI that enables contractors to:
+ Create AI-powered quotes 
+ Store and manage quotes 
+ Send quotes via email/SMS 
+ Receive approvals via secure links 
+ Manage subscriptions 
+ Upload work logs once and reuse automatically 
+Frontend is already built. Backend will power all data, workflows, and integrations.
+2. Core System Principles
+ Multi-tenant system with strict data isolation 
+ Backend owns all business logic and security 
+ Quotes are immutable once sent 
+ AI integration focuses on data flow only
+ System must be observable and debuggable 
+ Each milestone delivers a working, testable system slice
+3. Tech Stack
+Backend / DB / Auth: Supabase 
+AI: Anthropic (Claude) via server-side proxy 
+Email: Resend 
+SMS: Twilio 
+Billing: Stripe 
+Logging: Sentry + structured logs 
+Hosting: Netlify 
+4. Core Modules
+4.1 Authentication & User Management
+ Signup / login / password reset 
+ Session persistence (mobile + browser) 
+ User profile: 
+ name 
+ business name 
+ phone 
+ email 
+ location / trade 
+Rules:
+ All data scoped by user_id
+ Row-Level Security (RLS) enforced across all tables 
+4.2 Quote System
+Quote States:
+ Draft 
+ Sent 
+ Approved 
+ Changes Requested 
+Rules:
+ Quotes are editable only in Draft 
+ On “Send”: 
+ Quote becomes immutable 
+ Snapshot stored 
+ Any modification creates a new version
+4.3 Quote Versioning
+ Maintain base quote record 
+ Store immutable versions separately 
+ Each version includes: 
+ line items 
+ totals 
+ customer details 
+ timestamp 
+4.4 Approval Flow
+ Unique token per quote version 
+ Token stored and validated server-side 
+ No authentication required for customer 
+Behavior:
+ Single approval per token 
+ After action → confirmation screen 
+ Token invalid after use 
+4.5 Work Log System
+ Upload occurs during onboarding (not quote flow) 
+ Supported formats: 
+ PDF, CSV, XLSX, TXT 
+ Extract structured text from files 
+ Store parsed data linked to user 
+Usage:
+ Automatically included in AI input 
+ No manual attachment during quote generation 
+4.6 AI Integration
+Responsibilities:
+ Accept structured inputs: 
+ job details 
+ work logs 
+ images (base64) 
+ Send to Anthropic API 
+Out of Scope (handled later):
+ Output quality 
+ Calibration 
+ Prompt optimization 
+4.7 Rate Limiting
+ Limit: 20 AI calls per user per day 
+ Enforced server-side 
+ Friendly error messaging 
+4.8 Email & SMS
+ Email via Resend: 
+ quote delivery 
+ approval notifications 
+ SMS via Twilio: 
+ approval links 
+4.9 Stripe Billing
+ Subscription via Stripe Checkout 
+ Webhook-driven account state 
+Rules:
+ Failed payment → 7-day grace period 
+ After 7 days → read-only mode 
+ All billing events logged 
+4.10 PDF Generation
+ Generate from quote data 
+ Match UI structure 
+ Include Tradeflo branding 
+4.11 Observability
+ Sentry integration 
+ Structured logs: 
+ user_id 
+ action 
+ error 
+ timestamp 
+ Email alerts for critical failures 
+4.12 Onboarding Flow (Functional)
+Onboarding includes:
+ welcome step (with skip option) 
+ business details capture 
+ work log upload 
+ transition to first quote 
+Skip is allowed, but system continues with default behavior (no work log calibration).
+👉 All UI copy, messaging, and UX behavior will follow the onboarding reference document provided by the client (See the document page "Onboarding Flow").
+5. AI Scope Boundary (Guardrails Alignment)
+This phase is responsible for:
+ structured data input 
+ clean data flow into AI 
+This phase is NOT responsible for:
+ AI output accuracy 
+ calibration 
+ guardrails logic 
+These will be handled in a separate phase by the technical advisor.
+6. Milestone-Based Execution Plan
+Milestone 1 — Foundation, Auth & Core Quote Setup
+ Backend/API structure setup 
+ Supabase project setup 
+ Auth system 
+ Database schema 
+ Quote creation (Draft state) 
+ Access control (RLS) 
+ Input validation 
+👉 Outcome:
+ Users can securely sign up, log in, and create/save quotes.
+Milestone 2 — Workflows & AI Layer
+ Draft → Sent transition (locking logic) 
+ Quote versioning 
+ Approval token generation 
+ Onboarding flow (business + work logs) (See the document page "Onboarding Flow")
+ Work log parsing + storage 
+ AI data flow integration 
+ Rate limiting 
+👉 Outcome:
+ End-to-end quote generation with structured data flowing into AI.
+Milestone 3 — Integrations & Output
+ Stripe billing + webhooks 
+ Grace period + read-only logic 
+ Email (Resend) 
+ SMS (Twilio) 
+ Customer-facing approval page 
+ PDF generation 
+👉 Outcome:
+ Quotes can be delivered, approved, billed, and exported.
+Milestone 4 — Finalization
+ Sentry integration 
+ Error handling (AI, billing, delivery) 
+ Data retention (90-day purge) 
+ Edge-case handling 
+ QA + regression testing 
+👉 Outcome:
+ Stable production-ready system with logging and validated core flows.
+7. Acceptance Criteria (Lightweight)
+Authentication
+ Users can sign up, log in, and persist sessions 
+ Users cannot access other users’ data 
+Quotes
+ Quotes can be created, saved, retrieved 
+ Sent quotes are immutable 
+ Edits create new versions 
+Approval Flow
+ Each quote version has unique token 
+ Token allows single action only 
+ Token invalid after use 
+Work Logs
+ Files upload successfully 
+ Text extracted and stored 
+ Data automatically used in AI flow 
+Billing
+ Subscription activates on payment 
+ Failed payment → 7-day grace 
+ After grace → read-only 
+AI
+ Structured data passed correctly 
+ Rate limit enforced 
+Delivery
+ Emails and SMS sent successfully 
+ PDF generated correctly 
+Observability
+ Errors logged with context 
+ Critical failures trigger alerts 
+8. Non-Functional Requirements
+ Data isolation enforced 
+ No API keys exposed client-side 
+ Secure token handling 
+ System must be debuggable 
+9. Out of Scope
+ AI output optimization 
+ Guardrails implementation 
+ Admin dashboard 
+ Offline support 
+ Advanced analytics 
