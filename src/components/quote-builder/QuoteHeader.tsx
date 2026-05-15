@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { HeaderNavLinks } from "@/components/nav/HeaderNavLinks";
-import { OnboardingHeaderLink } from "@/components/onboarding/OnboardingHeaderLink";
 
 export function QuoteHeader({ saveDraft }: { saveDraft?: ReactNode }) {
   return (
@@ -16,7 +15,6 @@ export function QuoteHeader({ saveDraft }: { saveDraft?: ReactNode }) {
         {saveDraft ? (
           <span className="qb-header-save">{saveDraft}</span>
         ) : null}
-        <OnboardingHeaderLink />
         <HeaderNavLinks />
         <LogoutButton />
       </div>
