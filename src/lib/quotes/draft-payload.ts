@@ -1,7 +1,10 @@
 import { z } from "zod";
 import type { UIMessage } from "ai";
 import type { DeliveryOption, JobFormData, LineItem, SitePhoto } from "@/components/quote-builder/types";
-import { quoteLineItemSchema } from "@/lib/schemas/quote-builder";
+import {
+  normalizeQuoteLineItem,
+  quoteLineItemSchema,
+} from "@/lib/schemas/quote-builder";
 
 export const QUOTE_DRAFT_PAYLOAD_VERSION = 1 as const;
 
@@ -150,10 +153,18 @@ export function buildDraftPayloadV1(input: {
     v: 1,
     currentStep: input.currentStep,
     currentMode: input.currentMode,
-    lines: input.lines.map((line) => ({
-      ...line,
-      source: line.source ?? "estimated",
-    })),
+    lines: input.lines.map((line) =>
+      normalizeQuoteLineItem({
+        description: line.description,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        total: line.total,
+        source: line.source,
+        kind: line.kind,
+        laborUnit: line.laborUnit,
+        catalogCategory: line.catalogCategory,
+      }),
+    ),
     sitePhotos: input.sitePhotos,
     workLogNames: input.workLogNames,
     collectedJobData: input.collectedJobData,

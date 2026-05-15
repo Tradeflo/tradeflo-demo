@@ -43,7 +43,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
-  const billingBlock = await billingMutationBlockedResponse(user.id);
+  const billingBlock = await billingMutationBlockedResponse(user);
   if (billingBlock) return billingBlock;
 
   const { id } = await context.params;

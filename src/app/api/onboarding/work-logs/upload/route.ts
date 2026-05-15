@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
-  const billingBlock = await billingMutationBlockedResponse(user.id);
+  const billingBlock = await billingMutationBlockedResponse(user);
   if (billingBlock) return billingBlock;
 
   let form: FormData;

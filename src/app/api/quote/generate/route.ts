@@ -4,6 +4,8 @@ import { getSessionUser } from "@/lib/api/session";
 import { loadAggregatedWorkLogText } from "@/lib/onboarding/aggregated-work-log-text";
 import { buildQuoteGeneratePrompt } from "@/lib/quote-generation/build-prompt";
 import { loadMaterialsPricingContext } from "@/lib/quote-generation/materials-pricing-context";
+import { recordMaterialsCatalogGaps } from "@/lib/catalog-gaps/record";
+import { jobTypeFromGenerateInput } from "@/lib/quote-generation/job-type-from-input";
 import { runAnthropicQuoteGeneration } from "@/lib/quote-generation/run-anthropic-quote";
 import { quoteGenerateRequestSchema } from "@/lib/schemas/quote-builder";
 import { createClient } from "@/lib/supabase/server";
@@ -18,7 +20,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const billingBlock = await billingMutationBlockedResponse(user.id);
+  const billingBlock = await billingMutationBlockedResponse(user);
   if (billingBlock) return billingBlock;
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -53,7 +55,7 @@ export async function POST(req: Request) {
 
   const supabase = await createClient();
 
-  const slot = await consumeQuoteAiGenerationSlot(supabase, user.id);
+  const slot = await consumeQuoteAiGenerationSlot(supabase, user.id, user);
   if (!slot.ok && slot.reason === "rpc") {
     return NextResponse.json(
       {
@@ -96,6 +98,14 @@ export async function POST(req: Request) {
     const { lineItems, rationale, notes } = await runAnthropicQuoteGeneration({
       prompt,
       sitePhotos: input.sitePhotos,
+    });
+
+    await recordMaterialsCatalogGaps({
+      userId: user.id,
+      quoteId: null,
+      contractorTrade: materialsPricing.trade,
+      jobType: jobTypeFromGenerateInput(input),
+      lines: lineItems,
     });
 
     return NextResponse.json({

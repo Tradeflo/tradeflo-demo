@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     });
   }
 
-  const billingBlock = await billingMutationBlockedResponse(user.id);
+  const billingBlock = await billingMutationBlockedResponse(user);
   if (billingBlock) return billingBlock;
 
   if (!process.env.ANTHROPIC_API_KEY) {

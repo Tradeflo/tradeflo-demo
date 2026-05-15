@@ -1,4 +1,8 @@
-import type { QuoteLinePriceSource } from "@/lib/schemas/quote-builder";
+import type {
+  QuoteLineKind,
+  QuoteLineLaborUnit,
+  QuoteLinePriceSource,
+} from "@/lib/schemas/quote-builder";
 
 export type LineItem = {
   description: string;
@@ -7,6 +11,12 @@ export type LineItem = {
   total: number;
   /** Persisted quote line price origin (SRS M3). Omitted ⇒ `estimated`. */
   source?: QuoteLinePriceSource;
+  /** Material vs labour row (M3). Omitted ⇒ material for legacy drafts. */
+  kind?: QuoteLineKind;
+  /** When kind is labour: hour | day | flat. */
+  laborUnit?: QuoteLineLaborUnit;
+  /** AI guess for estimated material rows (catalog gap prioritization). */
+  catalogCategory?: string;
 };
 
 export type SitePhoto = {

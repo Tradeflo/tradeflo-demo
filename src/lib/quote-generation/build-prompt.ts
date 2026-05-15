@@ -65,7 +65,11 @@ export function buildQuoteGeneratePrompt(input: BuildQuotePromptInput): string {
   }
   prompt += `- If no catalog row fits: estimate price from context and set "source" to "estimated".\n`;
   prompt +=
+    '- For material lines with "source":"estimated", add "catalogCategory": a short internal label (e.g. "siding", "fasteners", "insulation", "trim") so missing catalog items can be prioritized. Omit for catalog-matched materials.\n';
+  prompt +=
     `- Use "your_rate" for labour or when pricing clearly follows the contractor work history narrative (not catalogue retail).\n`;
+  prompt +=
+    `- LINE ITEM SHAPE: Each object must include "kind": "material" or "kind": "labor". Labour rows must include "laborUnit": "hour" | "day" | "flat" (hour if unsure). Materials markup rules above apply only to material rows.\n`;
 
   if (mp.catalog.length === 0) {
     prompt +=
@@ -80,7 +84,7 @@ export function buildQuoteGeneratePrompt(input: BuildQuotePromptInput): string {
   }
 
   prompt +=
-    'Respond ONLY with valid JSON:\n{"lineItems":[{"description":"...","quantity":1,"unitPrice":0,"total":0,"source":"estimated"}],"total":0,"rationale":"Brief pricing explanation","notes":"Important conditions"}';
+    'Respond ONLY with valid JSON:\n{"lineItems":[{"description":"...","kind":"material","quantity":1,"unitPrice":0,"total":0,"source":"estimated","catalogCategory":"siding"},{"description":"Installation labour","kind":"labor","laborUnit":"hour","quantity":8,"unitPrice":75,"total":600,"source":"your_rate"}],"total":0,"rationale":"Brief pricing explanation","notes":"Important conditions"}';
 
   return prompt;
 }

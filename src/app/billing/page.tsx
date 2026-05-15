@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BillingActions } from "@/components/billing/BillingActions";
 import { QuoteFooter } from "@/components/quote-builder/QuoteFooter";
+import { bypassesLimitsFromAuthRow } from "@/lib/admin/tradeflo-admin";
 import { getSessionUser } from "@/lib/api/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,6 +31,7 @@ type BillingProfile = {
   hasStripeCustomer: boolean;
   graceEndsAt: string | null;
   readOnly: boolean;
+  limitsBypass: boolean;
 };
 
 const PLAN_NAME = "Tradeflo Pro";
@@ -150,14 +153,16 @@ function decideAction(profile: BillingProfile): {
   };
 }
 
-async function loadBillingProfile(userId: string): Promise<BillingProfile> {
+async function loadBillingProfile(
+  account: Pick<User, "id" | "email">,
+): Promise<BillingProfile> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("user_info")
     .select(
-      "stripe_customer_id, billing_subscription_status, billing_grace_period_ends_at, billing_read_only",
+      "stripe_customer_id, billing_subscription_status, billing_grace_period_ends_at, billing_read_only, role",
     )
-    .eq("id", userId)
+    .eq("id", account.id)
     .maybeSingle();
 
   const customerId =
@@ -174,6 +179,7 @@ async function loadBillingProfile(userId: string): Promise<BillingProfile> {
         ? data.billing_grace_period_ends_at
         : null,
     readOnly: data?.billing_read_only === true,
+    limitsBypass: bypassesLimitsFromAuthRow(data?.role, account.email),
   };
 }
 
@@ -195,7 +201,7 @@ export default async function BillingPage({
     redirect("/login?next=/billing");
   }
 
-  const profile = await loadBillingProfile(user.id);
+  const profile = await loadBillingProfile(user);
   const action = decideAction(profile);
   const pill = statusPill(profile.status);
   const sp = await searchParams;
@@ -242,7 +248,7 @@ export default async function BillingPage({
 
       <div className="app">
         <main className="main">
-          {profile.readOnly ? (
+          {profile.readOnly && !profile.limitsBypass ? (
             <div
               className="card"
               role="alert"
@@ -268,7 +274,33 @@ export default async function BillingPage({
             </div>
           ) : null}
 
-          {!profile.readOnly &&
+          {profile.limitsBypass ? (
+            <div
+              className="card"
+              role="status"
+              style={{
+                background: "var(--blue-bg)",
+                borderColor: "var(--blue-border)",
+              }}
+            >
+              <div
+                className="card-label"
+                style={{
+                  color: "var(--blue)",
+                  borderBottomColor: "var(--blue-border)",
+                }}
+              >
+                Operator access
+              </div>
+              <p className="help-text" style={{ marginBottom: 0 }}>
+                Your account skips subscription read-only locks and AI quote
+                daily limits for product use (admin role or bootstrap email).
+              </p>
+            </div>
+          ) : null}
+
+          {!profile.limitsBypass &&
+          !profile.readOnly &&
           profile.status === "past_due" &&
           graceEndsInFuture ? (
             <div

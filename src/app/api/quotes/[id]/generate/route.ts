@@ -5,7 +5,9 @@ import type { QuoteWithVersionRows } from "@/lib/api/quotes-format";
 import { getSessionUser } from "@/lib/api/session";
 import { loadAggregatedWorkLogText } from "@/lib/onboarding/aggregated-work-log-text";
 import { parseQuoteDraftPayload } from "@/lib/quotes/draft-payload";
+import { recordMaterialsCatalogGaps } from "@/lib/catalog-gaps/record";
 import { buildQuoteGeneratePrompt } from "@/lib/quote-generation/build-prompt";
+import { jobTypeFromGenerateInput } from "@/lib/quote-generation/job-type-from-input";
 import { loadMaterialsPricingContext } from "@/lib/quote-generation/materials-pricing-context";
 import { runAnthropicQuoteGeneration } from "@/lib/quote-generation/run-anthropic-quote";
 import {
@@ -24,7 +26,7 @@ export async function POST(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
-  const billingBlock = await billingMutationBlockedResponse(user.id);
+  const billingBlock = await billingMutationBlockedResponse(user);
   if (billingBlock) return billingBlock;
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -93,7 +95,7 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const slot = await consumeQuoteAiGenerationSlot(supabase, user.id);
+  const slot = await consumeQuoteAiGenerationSlot(supabase, user.id, user);
   if (!slot.ok && slot.reason === "rpc") {
     return jsonError(
       "Could not verify AI usage limit. Apply db/quote_ai_rate_limit.sql in Supabase, or try again.",
@@ -136,6 +138,14 @@ export async function POST(request: Request, context: RouteContext) {
     const msg = e instanceof Error ? e.message : "Generation failed";
     return jsonError(msg, 502);
   }
+
+  await recordMaterialsCatalogGaps({
+    userId: user.id,
+    quoteId,
+    contractorTrade: materialsPricing.trade,
+    jobType: jobTypeFromGenerateInput(input),
+    lines: result.lineItems,
+  });
 
   const parsedPayload = parseQuoteDraftPayload(headVersion.payload);
   const nextPayload = {

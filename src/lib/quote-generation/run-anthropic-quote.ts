@@ -1,6 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
 import {
+  normalizeQuoteLineItem,
   type QuoteLineItem,
   quoteAiResponseSchema,
   sitePhotoInputSchema,
@@ -48,13 +49,16 @@ export async function runAnthropicQuoteGeneration(input: {
     const q = item.quantity || 1;
     const u = item.unitPrice || 0;
     const t = item.total ?? q * u;
-    return {
+    return normalizeQuoteLineItem({
       description: item.description,
       quantity: q,
       unitPrice: u,
       total: t,
       source: item.source,
-    };
+      kind: item.kind,
+      laborUnit: item.laborUnit,
+      catalogCategory: item.catalogCategory,
+    });
   });
 
   return {
