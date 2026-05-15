@@ -27,34 +27,7 @@ export function QuoteBuilderApp() {
         </div>
       ) : null}
       <div className="app">
-        <QuoteHeader
-          saveDraft={
-            !model.isHydrating && model.quoteId ? (
-              <button
-                type="button"
-                className="btn"
-                onClick={() => void model.saveDraft()}
-                disabled={
-                  model.billingWriteBlocked !== false ||
-                  model.isSavingDraft ||
-                  model.quoteLoading ||
-                  model.isSending
-                }
-                title={
-                  model.billingWriteBlocked === true
-                    ? "Account is read-only until billing is updated—use Billing in the header."
-                    : undefined
-                }
-              >
-                {model.isSavingDraft
-                  ? "Saving…"
-                  : model.billingWriteBlocked === true
-                    ? "Save draft (read-only)"
-                    : "Save draft"}
-              </button>
-            ) : undefined
-          }
-        />
+        <QuoteHeader />
         <StepNavigation
           currentStep={model.currentStep}
           onGoTo={model.goTo}

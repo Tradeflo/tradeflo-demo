@@ -129,11 +129,6 @@ export function useQuoteBuilderModel() {
   const [persistError, setPersistError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
-  /** `null` until /api/nav/header loads; when `true`, billing gate blocks PATCH (read-only). */
-  const [billingWriteBlocked, setBillingWriteBlocked] = useState<
-    boolean | null
-  >(null);
 
   const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
@@ -152,28 +147,6 @@ export function useQuoteBuilderModel() {
   const goTo = useCallback((n: number) => {
     setCurrentStep(n);
     if (typeof window !== "undefined") window.scrollTo(0, 0);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch("/api/nav/header");
-        if (!res.ok) {
-          if (!cancelled) setBillingWriteBlocked(false);
-          return;
-        }
-        const data = (await res.json()) as {
-          billingWriteBlocked?: boolean;
-        };
-        if (!cancelled) setBillingWriteBlocked(data.billingWriteBlocked === true);
-      } catch {
-        if (!cancelled) setBillingWriteBlocked(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const transport = useMemo(
@@ -436,40 +409,6 @@ export function useQuoteBuilderModel() {
       messages,
     ],
   );
-
-  const saveDraft = useCallback(async () => {
-    if (!quoteId) {
-      setPersistError("No quote to save.");
-      return;
-    }
-    setIsSavingDraft(true);
-    setPersistError(null);
-    try {
-      const res = await fetch(`/api/quotes/${quoteId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payload: persistSnapshot as unknown as Record<string, unknown>,
-        }),
-      });
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        data?: { draft?: { payload?: unknown } };
-      };
-      if (!res.ok) {
-        throw new Error(
-          typeof body.error === "string" ? body.error : "Save failed",
-        );
-      }
-      syncSentDoneFromQuoteResponse(body);
-    } catch (e) {
-      setPersistError(
-        e instanceof Error ? e.message : "Could not save quote",
-      );
-    } finally {
-      setIsSavingDraft(false);
-    }
-  }, [quoteId, persistSnapshot, syncSentDoneFromQuoteResponse]);
 
   const sendQuote = useCallback(async () => {
     if (!quoteId) {
@@ -979,9 +918,6 @@ export function useQuoteBuilderModel() {
     sendError,
     isHydrating,
     persistError,
-    saveDraft,
-    isSavingDraft,
-    billingWriteBlocked,
   };
 }
 

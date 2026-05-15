@@ -18,7 +18,6 @@ export function HeaderNavLinks() {
         if (!res.ok || cancelled) return;
         const data = (await res.json()) as {
           nav?: HeaderNavVariant;
-          billingWriteBlocked?: boolean;
         };
         if (
           !cancelled &&
