@@ -5,6 +5,8 @@ const PUBLIC_PREFIXES = [
   "/reset-password",
   "/terms",
   "/privacy",
+  /** Customer quote approval link (SRS §4.4); no auth */
+  "/approve",
 ] as const;
 
 export function isPublicPath(pathname: string): boolean {
