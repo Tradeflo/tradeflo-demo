@@ -76,16 +76,16 @@ export function businessStepComplete(
   if (!u) return false;
   return Boolean(
     u.business_name?.trim() &&
-      u.full_name?.trim() &&
-      u.phone?.trim() &&
-      u.email?.trim() &&
-      u.location?.trim() &&
-      u.trade?.trim() &&
-      profileMaterialsMarkupRecorded(u.materials_markup_percent) &&
-      profileDefaultLabourRecorded(
-        u.default_labour_rate,
-        u.default_labour_rate_unit,
-      ),
+    u.full_name?.trim() &&
+    u.phone?.trim() &&
+    u.email?.trim() &&
+    u.location?.trim() &&
+    u.trade?.trim() &&
+    profileMaterialsMarkupRecorded(u.materials_markup_percent) &&
+    profileDefaultLabourRecorded(
+      u.default_labour_rate,
+      u.default_labour_rate_unit,
+    ),
   );
 }
 
@@ -104,8 +104,36 @@ export function computeOnboardingCompleted(
   return markedComplete && businessDone && workLogsDone;
 }
 
+/** Fields needed to validate profile + work-log steps before setting completion flag. */
+export type UserInfoRowForOnboardingPrefinish = Pick<
+  UserInfoRowForOnboardingCompletion,
+  | "business_name"
+  | "full_name"
+  | "phone"
+  | "email"
+  | "location"
+  | "trade"
+  | "materials_markup_percent"
+  | "default_labour_rate"
+  | "default_labour_rate_unit"
+  | "onboarding_skip_work_logs"
+>;
+
 /**
- * HTML navigation: contractors must finish onboarding before the rest of the app.
+ * Business + work-log gates satisfied (before setting `onboarding_completed`).
+ */
+export function onboardingReadyToMarkComplete(
+  u: UserInfoRowForOnboardingPrefinish | null,
+  workLogCount: number,
+): boolean {
+  const businessDone = businessStepComplete(u);
+  const workLogsDone =
+    Boolean(u?.onboarding_skip_work_logs) || workLogCount > 0;
+  return businessDone && workLogsDone;
+}
+
+/**
+ * HTML navigation: contractors must satisfy full onboarding (same as GET `/api/onboarding/status` `completed`).
  * Admins / bootstrap emails skip; transient DB errors do not force onboarding.
  */
 export async function contractorNeedsOnboardingRedirect(

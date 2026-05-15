@@ -148,13 +148,14 @@ export function OnboardingApp() {
 
   const applyStepFromStatus = useCallback((s: OnboardingStatus) => {
     if (s.completed) {
-      router.replace("/");
+      /** Stay on onboarding until user explicitly clicks “Go to quote builder”. */
+      setStep(2);
       return;
     }
     if (!s.steps.business.completed) setStep(0);
     else if (!s.steps.workLogs.completed) setStep(1);
     else setStep(2);
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -362,8 +363,8 @@ export function OnboardingApp() {
             : "Could not complete setup",
         );
       }
-      router.replace("/");
-      router.refresh();
+      /** Full page load so proxy sees `onboarding_completed` and RSC picks up `/`. */
+      window.location.href = "/";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not complete setup");
     } finally {
@@ -634,7 +635,7 @@ export function OnboardingApp() {
                     <option value="custom">Custom…</option>
                   </select>
                   {materialsMarkupSelectValue(business.materialsMarkupPercent) ===
-                  "custom" ? (
+                    "custom" ? (
                     <div className="field" style={{ marginTop: 12 }}>
                       <label htmlFor="ob-markup-custom">Custom (%)</label>
                       <input
