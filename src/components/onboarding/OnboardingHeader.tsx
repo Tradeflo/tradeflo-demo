@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { HeaderNavLinks } from "@/components/nav/HeaderNavLinks";
 
 export function OnboardingHeader() {
   return (
@@ -10,6 +11,7 @@ export function OnboardingHeader() {
       </Link>
       <div className="header-right">
         <span className="header-label">Account setup</span>
+        <HeaderNavLinks />
         <LogoutButton />
       </div>
     </header>

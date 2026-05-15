@@ -15,11 +15,15 @@ import type { OnboardingBusinessBody } from "@/lib/schemas/onboarding";
 import { OnboardingHeader } from "./OnboardingHeader";
 import { OnboardingProgress } from "./OnboardingProgress";
 
-/** Business step draft: markup empty until preset or typed value — no numeric default. */
+/** Business step draft: markup + labour rate empty until user sets values. */
 type OnboardingBusinessFormValues = Omit<
   OnboardingBusinessBody,
-  "materialsMarkupPercent"
-> & { materialsMarkupPercent: number | "" };
+  "materialsMarkupPercent" | "defaultLabourRate" | "defaultLabourRateUnit"
+> & {
+  materialsMarkupPercent: number | "";
+  defaultLabourRate: number | "";
+  defaultLabourRateUnit: OnboardingBusinessBody["defaultLabourRateUnit"] | "";
+};
 
 type OnboardingStatus = {
   completed: boolean;
@@ -45,6 +49,12 @@ function mergeBusinessPrefillIntoState(
       typeof prefill.materialsMarkupPercent === "number"
         ? prefill.materialsMarkupPercent
         : prev.materialsMarkupPercent,
+    defaultLabourRate:
+      typeof prefill.defaultLabourRate === "number"
+        ? prefill.defaultLabourRate
+        : prev.defaultLabourRate,
+    defaultLabourRateUnit:
+      prefill.defaultLabourRateUnit ?? prev.defaultLabourRateUnit,
   }));
 }
 
@@ -101,6 +111,8 @@ export function OnboardingApp() {
     province: "NB",
     tradeType: "",
     materialsMarkupPercent: "",
+    defaultLabourRate: "",
+    defaultLabourRateUnit: "",
     hstNumber: "",
   });
   const [businessFieldErrors, setBusinessFieldErrors] = useState<
@@ -187,9 +199,26 @@ export function OnboardingApp() {
       });
       return;
     }
+    if (business.defaultLabourRate === "") {
+      setBusinessFieldErrors({
+        defaultLabourRate:
+          "Enter your default labour rate in CAD (greater than zero).",
+      });
+      return;
+    }
+    if (business.defaultLabourRateUnit === "") {
+      setBusinessFieldErrors({
+        defaultLabourRateUnit:
+          "Choose how this labour rate is counted (per hour, per day, or flat).",
+      });
+      return;
+    }
+    const labourUnit = business.defaultLabourRateUnit;
     const payload: OnboardingBusinessBody = {
       ...business,
       materialsMarkupPercent: business.materialsMarkupPercent,
+      defaultLabourRate: business.defaultLabourRate,
+      defaultLabourRateUnit: labourUnit,
     };
     const parsed = onboardingBusinessBodySchema.safeParse(payload);
     if (!parsed.success) {
@@ -651,6 +680,109 @@ export function OnboardingApp() {
                       {businessFieldErrors.materialsMarkupPercent}
                     </p>
                   ) : null}
+                </div>
+
+                <div className="field">
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 14,
+                      display: "block",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Default labour rate
+                  </span>
+                  <p
+                    className="help-text"
+                    style={{ marginTop: 4, marginBottom: 8 }}
+                  >
+                    Your usual labour price in CAD and how you count it (per
+                    hour, per day, or as a flat job rate). Stored on your
+                    profile and used when pricing labour line items on quotes.
+                  </p>
+                  <div className="row2">
+                    <div className="field">
+                      <label htmlFor="ob-labour-rate">Amount (CAD)</label>
+                      <input
+                        id="ob-labour-rate"
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        inputMode="decimal"
+                        value={
+                          business.defaultLabourRate === ""
+                            ? ""
+                            : business.defaultLabourRate
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            setBusiness((b) => ({
+                              ...b,
+                              defaultLabourRate: "",
+                            }));
+                            return;
+                          }
+                          const n = parseFloat(raw);
+                          setBusiness((b) => ({
+                            ...b,
+                            defaultLabourRate: Number.isFinite(n) ? n : "",
+                          }));
+                        }}
+                        autoComplete="off"
+                      />
+                      {businessFieldErrors.defaultLabourRate ? (
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "var(--red)",
+                            marginTop: 6,
+                          }}
+                        >
+                          {businessFieldErrors.defaultLabourRate}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="field">
+                      <label htmlFor="ob-labour-unit">Unit</label>
+                      <select
+                        id="ob-labour-unit"
+                        value={business.defaultLabourRateUnit}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setBusinessFieldErrors((fe) => {
+                            const next = { ...fe };
+                            delete next.defaultLabourRateUnit;
+                            return next;
+                          });
+                          setBusiness((b) => ({
+                            ...b,
+                            defaultLabourRateUnit:
+                              v === ""
+                                ? ""
+                                : (v as OnboardingBusinessBody["defaultLabourRateUnit"]),
+                          }));
+                        }}
+                      >
+                        <option value="">Select unit…</option>
+                        <option value="hour">Per hour</option>
+                        <option value="day">Per day</option>
+                        <option value="flat">Flat rate</option>
+                      </select>
+                      {businessFieldErrors.defaultLabourRateUnit ? (
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "var(--red)",
+                            marginTop: 6,
+                          }}
+                        >
+                          {businessFieldErrors.defaultLabourRateUnit}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="field">

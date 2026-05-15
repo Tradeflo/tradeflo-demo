@@ -33,6 +33,8 @@ export async function POST(request: Request) {
       location,
       trade: b.tradeType.trim(),
       materials_markup_percent: b.materialsMarkupPercent,
+      default_labour_rate: b.defaultLabourRate,
+      default_labour_rate_unit: b.defaultLabourRateUnit,
       hst_number: b.hstNumber?.trim() || null,
     },
     { onConflict: "id" },

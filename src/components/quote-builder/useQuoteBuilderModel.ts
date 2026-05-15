@@ -19,6 +19,7 @@ import {
   buildDraftPayloadV1,
   parseQuoteDraftPayload,
   toUiMessages,
+  type QuoteDraftPayloadV1,
 } from "@/lib/quotes/draft-payload";
 import {
   normalizeQuoteLineItem,
@@ -129,6 +130,10 @@ export function useQuoteBuilderModel() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  /** `null` until /api/nav/header loads; when `true`, billing gate blocks PATCH (read-only). */
+  const [billingWriteBlocked, setBillingWriteBlocked] = useState<
+    boolean | null
+  >(null);
 
   const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
@@ -147,6 +152,28 @@ export function useQuoteBuilderModel() {
   const goTo = useCallback((n: number) => {
     setCurrentStep(n);
     if (typeof window !== "undefined") window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/nav/header");
+        if (!res.ok) {
+          if (!cancelled) setBillingWriteBlocked(false);
+          return;
+        }
+        const data = (await res.json()) as {
+          billingWriteBlocked?: boolean;
+        };
+        if (!cancelled) setBillingWriteBlocked(data.billingWriteBlocked === true);
+      } catch {
+        if (!cancelled) setBillingWriteBlocked(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const transport = useMemo(
@@ -616,7 +643,7 @@ export function useQuoteBuilderModel() {
   }, []);
 
   const buildQuote = useCallback(
-    (isChat: boolean, formJob?: JobFormData) => {
+    async (isChat: boolean, formJob?: JobFormData) => {
       if (!isChat && !formJob) return;
 
       goTo(1);
@@ -651,6 +678,53 @@ export function useQuoteBuilderModel() {
             workLogCount: workLogUploads.length,
           };
 
+      let flushPayload: QuoteDraftPayloadV1 = persistSnapshot;
+      if (!isChat && formJob) {
+        flushPayload = {
+          ...persistSnapshot,
+          jobForm: formJob,
+          collectedJobData: {
+            ...formJob,
+            voiceNote: formVoiceTranscript,
+          },
+        };
+      }
+
+      /**
+       * After a successful send the head version is `sent`; POST generate requires a draft.
+       * PATCH with payload forks a new draft (same rule as Save draft on a sent quote).
+       */
+      if (quoteId) {
+        try {
+          const flushRes = await fetch(`/api/quotes/${quoteId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              payload: flushPayload as unknown as Record<string, unknown>,
+            }),
+          });
+          const flushBody = (await flushRes.json().catch(() => ({}))) as {
+            error?: string;
+            data?: { draft?: { payload?: unknown } };
+          };
+          if (!flushRes.ok) {
+            throw new Error(
+              typeof flushBody.error === "string"
+                ? flushBody.error
+                : "Could not prepare quote for AI—save draft failed.",
+            );
+          }
+          syncSentDoneFromQuoteResponse(flushBody);
+        } catch (e) {
+          setQuoteError(
+            e instanceof Error
+              ? e.message
+              : "Could not prepare quote for AI refresh.",
+          );
+          return;
+        }
+      }
+
       generateMutation.mutate(body);
     },
     [
@@ -661,6 +735,9 @@ export function useQuoteBuilderModel() {
       workLogUploads,
       formVoiceTranscript,
       generateMutation,
+      quoteId,
+      persistSnapshot,
+      syncSentDoneFromQuoteResponse,
     ],
   );
 
@@ -904,6 +981,7 @@ export function useQuoteBuilderModel() {
     persistError,
     saveDraft,
     isSavingDraft,
+    billingWriteBlocked,
   };
 }
 
