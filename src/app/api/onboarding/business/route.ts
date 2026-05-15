@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       email: b.email.trim(),
       location,
       trade: b.tradeType.trim(),
+      materials_markup_percent: b.materialsMarkupPercent,
       hst_number: b.hstNumber?.trim() || null,
     },
     { onConflict: "id" },

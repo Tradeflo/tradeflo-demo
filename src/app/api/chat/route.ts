@@ -1,5 +1,6 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { getSessionUser } from "@/lib/api/session";
 
 const CHAT_SYSTEM = `You are a friendly AI estimator for Tradeflo AI, a quoting tool for trades contractors in Atlantic Canada.
@@ -27,6 +28,9 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  const billingBlock = await billingMutationBlockedResponse(user);
+  if (billingBlock) return billingBlock;
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return new Response(

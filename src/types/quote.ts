@@ -22,4 +22,7 @@ export type QuoteVersionRow = {
   approval_token_consumed_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Audit snapshot when db/labour_rates.sql applied (optional until migrated). */
+  labour_rate_applied?: number | string | null;
+  labour_rate_unit?: string | null;
 };

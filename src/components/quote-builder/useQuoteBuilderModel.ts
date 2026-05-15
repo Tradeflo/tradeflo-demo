@@ -20,7 +20,10 @@ import {
   parseQuoteDraftPayload,
   toUiMessages,
 } from "@/lib/quotes/draft-payload";
-import type { QuoteGenerateRequest } from "@/lib/schemas/quote-builder";
+import {
+  normalizeQuoteLineItem,
+  type QuoteGenerateRequest,
+} from "@/lib/schemas/quote-builder";
 import { getTextFromUIMessage } from "@/lib/ui-message";
 import { compressImage } from "./image-utils";
 import type {
@@ -532,12 +535,16 @@ export function useQuoteBuilderModel() {
         const q = item.quantity ?? 1;
         const u = item.unitPrice ?? 0;
         const t = item.total ?? q * u;
-        return {
+        return normalizeQuoteLineItem({
           description: item.description,
           quantity: q,
           unitPrice: u,
           total: t,
-        };
+          source: item.source,
+          kind: item.kind,
+          laborUnit: item.laborUnit,
+          catalogCategory: item.catalogCategory,
+        });
       });
       setLines(nextLines);
 
@@ -557,8 +564,21 @@ export function useQuoteBuilderModel() {
           ". Please try again.",
       );
       setLines([
-        { description: "Materials", quantity: 1, unitPrice: 0, total: 0 },
-        { description: "Labour", quantity: 1, unitPrice: 0, total: 0 },
+        {
+          description: "Materials",
+          quantity: 1,
+          unitPrice: 0,
+          total: 0,
+          kind: "material",
+        },
+        {
+          description: "Labour",
+          quantity: 1,
+          unitPrice: 0,
+          total: 0,
+          kind: "labor",
+          laborUnit: "hour",
+        },
       ]);
     },
   });
@@ -666,7 +686,13 @@ export function useQuoteBuilderModel() {
   const addLine = useCallback(() => {
     setLines((prev) => [
       ...prev,
-      { description: "New item", quantity: 1, unitPrice: 0, total: 0 },
+      {
+        description: "New item",
+        quantity: 1,
+        unitPrice: 0,
+        total: 0,
+        kind: "material",
+      },
     ]);
   }, []);
 

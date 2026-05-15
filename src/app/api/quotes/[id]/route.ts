@@ -1,4 +1,5 @@
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
+import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { formatQuoteResponse } from "@/lib/api/quotes-format";
 import type { QuoteWithVersionRows } from "@/lib/api/quotes-format";
 import { getSessionUser } from "@/lib/api/session";
@@ -41,6 +42,9 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function PATCH(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
+
+  const billingBlock = await billingMutationBlockedResponse(user);
+  if (billingBlock) return billingBlock;
 
   const { id } = await context.params;
   const idParsed = quoteIdParamSchema.safeParse(id);

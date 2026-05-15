@@ -4,6 +4,7 @@
 .qb-banner{padding:10px 20px;font-size:13px;text-align:center;border-bottom:1px solid var(--border)}
 .qb-banner-error{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
 .qb-banner-muted{background:var(--surface);color:var(--text2)}
+.qb-banner-amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
 
 .qb-save-bar{display:flex;justify-content:flex-end;align-items:center;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
 .qb-save-bar .btn{padding:8px 16px;font-size:13px}
@@ -181,7 +182,9 @@
 
 /* QUOTE LINES */
 .ql-head{display:grid;grid-template-columns:minmax(0,1fr) 70px 100px 36px;gap:8px;font-size:12px;font-weight:600;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:10px}
-.ql{display:grid;grid-template-columns:minmax(0,1fr) 70px 100px 36px;gap:8px;align-items:center;margin-bottom:8px}
+.ql{display:grid;grid-template-columns:minmax(0,1fr) 70px 100px 36px;gap:8px;align-items:flex-start;margin-bottom:8px}
+.ql-line-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.ql-cat{font-size:11px;color:var(--text3);padding:2px 0}
 .ql input{padding:10px 12px;font-size:14px;font-family:var(--font);border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);outline:none;width:100%;-webkit-appearance:none;transition:border-color 0.15s}
 .ql input:focus{border-color:var(--text);background:var(--white)}
 .ql-del{background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3);padding:6px;line-height:1;border-radius:6px;transition:all 0.1s}

@@ -1,9 +1,62 @@
 "use client";
 
+import type { LineItem } from "./types";
 import type { QuoteBuilderModel } from "./useQuoteBuilderModel";
 import { VoiceBar } from "./VoiceBar";
 
 type ReviewStepProps = { model: QuoteBuilderModel };
+
+function linePricingMeta(line: LineItem): {
+  label: string;
+  badgeModifier: string;
+  isCatalogGap: boolean;
+} {
+  const kind = line.kind ?? "material";
+  const src = line.source ?? "estimated";
+  const material = kind === "material";
+
+  if (material) {
+    if (src === "industry_average") {
+      return {
+        label: "Catalog pricing",
+        badgeModifier: "badge-green",
+        isCatalogGap: false,
+      };
+    }
+    if (src === "your_rate") {
+      return {
+        label: "Your rate",
+        badgeModifier: "badge-blue",
+        isCatalogGap: false,
+      };
+    }
+    return {
+      label: "Estimated (no catalog match)",
+      badgeModifier: "badge-amber",
+      isCatalogGap: true,
+    };
+  }
+
+  if (src === "your_rate") {
+    return {
+      label: "Labour — your rate",
+      badgeModifier: "badge-blue",
+      isCatalogGap: false,
+    };
+  }
+  if (src === "industry_average") {
+    return {
+      label: "Labour — benchmark",
+      badgeModifier: "badge-green",
+      isCatalogGap: false,
+    };
+  }
+  return {
+    label: "Labour — estimated",
+    badgeModifier: "badge-amber",
+    isCatalogGap: false,
+  };
+}
 
 export function ReviewStep({ model }: ReviewStepProps) {
   const {
@@ -22,6 +75,10 @@ export function ReviewStep({ model }: ReviewStepProps) {
     editVoiceTranscript,
     setEditVoiceTranscript,
   } = model;
+
+  const catalogGapCount = lines.filter(
+    (l) => linePricingMeta(l).isCatalogGap,
+  ).length;
 
   return (
     <>
@@ -61,6 +118,22 @@ export function ReviewStep({ model }: ReviewStepProps) {
             */}
             <span className="badge badge-blue">AI generated</span>
           </div>
+          {catalogGapCount > 0 ? (
+            <div
+              className="qb-banner qb-banner-amber"
+              style={{
+                margin: "0 -24px 16px",
+                borderRadius: 0,
+              }}
+              role="status"
+            >
+              {catalogGapCount === 1
+                ? "1 line uses estimated material pricing"
+                : `${catalogGapCount} lines use estimated material pricing`}
+              —nothing in reference catalog matched. Flagged items are logged so
+              the catalog can be expanded (see Admin → Catalog gaps).
+            </div>
+          ) : null}
           <div className="ql-head">
             <span>Description</span>
             <span style={{ textAlign: "center" }}>Qty</span>
@@ -68,40 +141,55 @@ export function ReviewStep({ model }: ReviewStepProps) {
             <span />
           </div>
           <div id="line-items">
-            {lines.map((line, idx) => (
-              <div key={idx} className="ql">
-                <input
-                  value={line.description}
-                  onChange={(e) =>
-                    updateLine(idx, { description: e.target.value })
-                  }
-                />
-                <input
-                  type="number"
-                  value={line.quantity}
-                  style={{ textAlign: "center" }}
-                  onChange={(e) =>
-                    updateLine(idx, { quantity: Number(e.target.value) })
-                  }
-                />
-                <input
-                  type="number"
-                  value={line.unitPrice}
-                  style={{ textAlign: "right" }}
-                  onChange={(e) =>
-                    updateLine(idx, { unitPrice: Number(e.target.value) })
-                  }
-                />
-                <button
-                  type="button"
-                  className="ql-del"
-                  aria-label="Remove line"
-                  onClick={() => removeLine(idx)}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+            {lines.map((line, idx) => {
+              const meta = linePricingMeta(line);
+              return (
+                <div key={idx} className="ql">
+                  <div style={{ minWidth: 0 }}>
+                    <input
+                      value={line.description}
+                      onChange={(e) =>
+                        updateLine(idx, { description: e.target.value })
+                      }
+                    />
+                    <div className="ql-line-meta">
+                      <span className={`badge ${meta.badgeModifier}`}>
+                        {meta.label}
+                      </span>
+                      {line.catalogCategory?.trim() ? (
+                        <span className="ql-cat">
+                          Category: {line.catalogCategory.trim()}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <input
+                    type="number"
+                    value={line.quantity}
+                    style={{ textAlign: "center" }}
+                    onChange={(e) =>
+                      updateLine(idx, { quantity: Number(e.target.value) })
+                    }
+                  />
+                  <input
+                    type="number"
+                    value={line.unitPrice}
+                    style={{ textAlign: "right" }}
+                    onChange={(e) =>
+                      updateLine(idx, { unitPrice: Number(e.target.value) })
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="ql-del"
+                    aria-label="Remove line"
+                    onClick={() => removeLine(idx)}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
           </div>
           <button
             type="button"

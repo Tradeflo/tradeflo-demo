@@ -1,4 +1,5 @@
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
+import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { formatQuoteResponse } from "@/lib/api/quotes-format";
 import type { QuoteWithVersionRows } from "@/lib/api/quotes-format";
 import { getSessionUser } from "@/lib/api/session";
@@ -31,6 +32,9 @@ export async function GET() {
 export async function POST(request: Request) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
+
+  const billingBlock = await billingMutationBlockedResponse(user);
+  if (billingBlock) return billingBlock;
 
   let body: unknown;
   try {
