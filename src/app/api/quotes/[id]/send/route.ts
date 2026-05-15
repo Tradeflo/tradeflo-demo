@@ -7,6 +7,10 @@ import {
   deliverSentQuoteNotifications,
   quoteDeliveryConfigError,
 } from "@/lib/quote-delivery/deliver-quote";
+import {
+  quoteDeliveryConfigMessageForClient,
+  quoteDeliveryFailureMessageForClient,
+} from "@/lib/quote-delivery/public-messages";
 import type { QuoteDraftPayloadV1 } from "@/lib/quotes/draft-payload";
 import { parseQuoteDraftPayload } from "@/lib/quotes/draft-payload";
 import { quoteSendValidationError } from "@/lib/quotes/send-validation";
@@ -142,7 +146,11 @@ export async function POST(request: Request, context: RouteContext) {
 
   const cfgErr = quoteDeliveryConfigError(parsedPayload.delivery);
   if (cfgErr) {
-    return jsonError(cfgErr, 503);
+    console.warn("[quotes/send] delivery config:", cfgErr);
+    return jsonError(
+      quoteDeliveryConfigMessageForClient(parsedPayload.delivery),
+      503,
+    );
   }
 
   const note =
@@ -240,6 +248,7 @@ export async function POST(request: Request, context: RouteContext) {
   });
 
   if (!deliver.ok) {
+    console.error("[quotes/send] delivery failed:", deliver.error);
     await rollbackQuoteToDraft({
       supabase,
       quoteId,
@@ -247,10 +256,7 @@ export async function POST(request: Request, context: RouteContext) {
       headVersionId: headVersion.id,
       draftSnapshot,
     });
-    return jsonError(
-      `Quote could not be delivered (${deliver.error}). The quote was rolled back to draft — fix delivery settings or try again.`,
-      502,
-    );
+    return jsonError(quoteDeliveryFailureMessageForClient(), 502);
   }
 
   return jsonOk({

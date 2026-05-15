@@ -43,6 +43,7 @@ async function resolveUserIdForSubscription(
 }
 
 export async function POST(request: Request) {
+  console.log("Stripe webhook received");
   const whSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!whSecret) {
     return new Response("STRIPE_WEBHOOK_SECRET is not configured", {
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
   const rawBody = await request.text();
   const hdrList = await headers();
   const signature = hdrList.get("stripe-signature");
+  console.log("Signature:", signature);
   if (!signature) {
     return new Response("Missing stripe-signature", { status: 400 });
   }
