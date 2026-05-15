@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BillingActions } from "@/components/billing/BillingActions";
+import { HeaderNavLinks } from "@/components/nav/HeaderNavLinks";
 import { QuoteFooter } from "@/components/quote-builder/QuoteFooter";
 import { bypassesLimitsFromAuthRow } from "@/lib/admin/tradeflo-admin";
 import { getSessionUser } from "@/lib/api/session";
@@ -242,6 +243,7 @@ export default async function BillingPage({
         </Link>
         <div className="header-right">
           <span className="header-label">Billing</span>
+          <HeaderNavLinks />
           <LogoutButton />
         </div>
       </header>

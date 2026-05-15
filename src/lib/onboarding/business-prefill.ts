@@ -46,6 +46,24 @@ function parsedMaterialsMarkup(raw: unknown): number | undefined {
   return undefined;
 }
 
+function parsedDefaultLabourRate(raw: unknown): number | undefined {
+  if (raw == null) return undefined;
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
+  if (typeof raw === "string" && raw.trim() !== "") {
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return undefined;
+}
+
+function parseLabourRateUnit(
+  raw: string | null | undefined,
+): OnboardingBusinessBody["defaultLabourRateUnit"] | undefined {
+  const t = raw?.trim();
+  if (t === "hour" || t === "day" || t === "flat") return t;
+  return undefined;
+}
+
 export type UserInfoRowForBusinessPrefill = {
   business_name: string | null;
   full_name: string | null;
@@ -54,6 +72,8 @@ export type UserInfoRowForBusinessPrefill = {
   location: string | null;
   trade: string | null;
   materials_markup_percent: unknown;
+  default_labour_rate: unknown;
+  default_labour_rate_unit: string | null;
   hst_number: string | null;
 };
 
@@ -83,6 +103,12 @@ export function businessFormPrefillFromUserInfo(
 
   const markup = parsedMaterialsMarkup(u.materials_markup_percent);
   if (markup !== undefined) out.materialsMarkupPercent = markup;
+
+  const labourRate = parsedDefaultLabourRate(u.default_labour_rate);
+  if (labourRate !== undefined) out.defaultLabourRate = labourRate;
+
+  const labourUnit = parseLabourRateUnit(u.default_labour_rate_unit);
+  if (labourUnit !== undefined) out.defaultLabourRateUnit = labourUnit;
 
   const h = u.hst_number;
   if (typeof h === "string") out.hstNumber = h.trim() || "";

@@ -1,46 +1,12 @@
 import { jsonOk, unauthorized } from "@/lib/api/responses";
 import { getSessionUser } from "@/lib/api/session";
 import { businessFormPrefillFromUserInfo } from "@/lib/onboarding/business-prefill";
+import {
+  businessStepComplete,
+  computeOnboardingCompleted,
+} from "@/lib/onboarding/completion";
 import type { OnboardingBusinessBody } from "@/lib/schemas/onboarding";
 import { createClient } from "@/lib/supabase/server";
-
-function profileMaterialsMarkupRecorded(materials_markup_percent: unknown) {
-  if (materials_markup_percent == null) return false;
-  if (
-    typeof materials_markup_percent === "number" &&
-    Number.isFinite(materials_markup_percent)
-  ) {
-    return true;
-  }
-  if (
-    typeof materials_markup_percent === "string" &&
-    materials_markup_percent.trim() !== ""
-  ) {
-    return Number.isFinite(Number(materials_markup_percent));
-  }
-  return false;
-}
-
-function businessStepComplete(u: {
-  business_name: string | null;
-  full_name: string | null;
-  phone: string | null;
-  email: string | null;
-  location: string | null;
-  trade: string | null;
-  materials_markup_percent: unknown;
-} | null): boolean {
-  if (!u) return false;
-  return Boolean(
-    u.business_name?.trim() &&
-      u.full_name?.trim() &&
-      u.phone?.trim() &&
-      u.email?.trim() &&
-      u.location?.trim() &&
-      u.trade?.trim() &&
-      profileMaterialsMarkupRecorded(u.materials_markup_percent),
-  );
-}
 
 export async function GET() {
   const { user } = await getSessionUser();
@@ -50,7 +16,7 @@ export async function GET() {
   const { data: u } = await supabase
     .from("user_info")
     .select(
-      "business_name, full_name, phone, email, location, trade, materials_markup_percent, hst_number, onboarding_skip_work_logs, onboarding_completed",
+      "business_name, full_name, phone, email, location, trade, materials_markup_percent, default_labour_rate, default_labour_rate_unit, hst_number, onboarding_skip_work_logs, onboarding_completed",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -64,9 +30,8 @@ export async function GET() {
   /** Any stored upload counts; extraction can be `failed` but step is still done (user engaged). */
   const workLogsDone =
     Boolean(u?.onboarding_skip_work_logs) || (count ?? 0) > 0;
-  const markedComplete = Boolean(u?.onboarding_completed);
-  /** User can leave onboarding only when DB flag set and all gated steps satisfy (handles legacy rows missing markup). */
-  const completed = markedComplete && businessDone && workLogsDone;
+  /** User can leave onboarding only when DB flag set and all gated steps satisfy (handles legacy rows missing markup or labour defaults). */
+  const completed = computeOnboardingCompleted(u ?? null, count ?? 0);
 
   let businessPrefill: Partial<OnboardingBusinessBody> | null = null;
   if (!businessDone && u) {
@@ -78,6 +43,8 @@ export async function GET() {
       location: u.location ?? null,
       trade: u.trade ?? null,
       materials_markup_percent: u.materials_markup_percent ?? null,
+      default_labour_rate: u.default_labour_rate ?? null,
+      default_labour_rate_unit: u.default_labour_rate_unit ?? null,
       hst_number: u.hst_number ?? null,
     });
   }

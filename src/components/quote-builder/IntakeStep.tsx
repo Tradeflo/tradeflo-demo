@@ -147,7 +147,7 @@ export function IntakeStep({ model }: IntakeStepProps) {
     }
     const v = customerForm.getValues();
     syncCustomerToModel(v);
-    buildQuote(true);
+    await buildQuote(true);
   };
 
   const onGenerateFromForm = async () => {
@@ -169,7 +169,7 @@ export function IntakeStep({ model }: IntakeStepProps) {
       address: jv.address,
       startWin: jv.startWin,
     });
-    buildQuote(false, {
+    await buildQuote(false, {
       jobType: jv.jobType,
       propertyType: jv.propertyType,
       sqft: jv.sqft,
