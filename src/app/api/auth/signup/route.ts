@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureApiRouteError } from "@/lib/observability/sentry-api";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { createClient } from "@/lib/supabase/server";
 import { signupServerSchema } from "@/lib/schemas/auth";
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const body: unknown = await request.json();
 
@@ -42,10 +44,22 @@ export async function POST(request: NextRequest) {
     // immediately — tell the client it can redirect straight away.
     const hasSession = !!data.session;
     return NextResponse.json({ hasSession }, { status: 200 });
-  } catch {
+  } catch (error) {
+    captureApiRouteError({
+      domain: "app",
+      route: "/api/auth/signup",
+      error,
+      extra: { step: "signup_request" },
+    });
     return NextResponse.json(
       { error: "An unexpected error occurred. Please try again." },
       { status: 500 },
     );
   }
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/auth/signup",
+  "app",
+  handlePost,
+);

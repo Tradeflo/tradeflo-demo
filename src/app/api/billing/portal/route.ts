@@ -1,20 +1,22 @@
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
 import { getPublicSiteOrigin } from "@/lib/env/public-site-origin";
 import { getSessionUser } from "@/lib/api/session";
+import { captureApiRouteError } from "@/lib/observability/sentry-api";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { getStripe } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 /** Stripe Customer Billing Portal — invoices, cancel, payment method. */
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
-  const origin = getPublicSiteOrigin(request);
+  const origin = getPublicSiteOrigin();
   if (!origin) {
     return jsonError(
-      "Set NEXT_PUBLIC_BASE_URL for portal return URLs, or use a reachable Host.",
+      "Set NEXT_PUBLIC_BASE_URL for portal return URLs.",
       500,
     );
   }
@@ -40,10 +42,28 @@ export async function POST(request: Request) {
   }
 
   const stripe = getStripe();
-  const session = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: `${origin}/billing`,
-  });
+  let session;
+  try {
+    session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${origin}/billing`,
+    });
+  } catch (e) {
+    captureApiRouteError({
+      domain: "billing",
+      route: "/api/billing/portal",
+      userId: user.id,
+      error: e,
+      extra: { step: "billingPortal.sessions.create" },
+    });
+    return jsonError("Could not open billing portal. Try again.", 502);
+  }
 
   return jsonOk({ url: session.url });
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/billing/portal",
+  "billing",
+  handlePost,
+);

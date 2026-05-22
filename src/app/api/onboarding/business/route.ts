@@ -1,9 +1,10 @@
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
 import { getSessionUser } from "@/lib/api/session";
 import { onboardingBusinessBodySchema } from "@/lib/schemas/onboarding";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { createClient } from "@/lib/supabase/server";
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -46,3 +47,9 @@ export async function POST(request: Request) {
 
   return jsonOk({ success: true });
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/onboarding/business",
+  "app",
+  handlePost,
+);

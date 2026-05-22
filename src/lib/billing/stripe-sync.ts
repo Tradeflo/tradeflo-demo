@@ -1,5 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/** Privacy policy §8 + SRS Milestone 4 — retention countdown after Stripe subscription deleted. */
+export const DATA_RETENTION_PURGE_AFTER_SUBSCRIPTION_CANCEL_DAYS = 90;
+
+export function dataRetentionPurgeDeadlineIsoFromNow(): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + DATA_RETENTION_PURGE_AFTER_SUBSCRIPTION_CANCEL_DAYS);
+  return d.toISOString();
+}
+
 export type BillingSubscriptionStatusDb =
   | "none"
   | "active"
@@ -68,6 +77,14 @@ export async function upsertStripeSubscriptionOnUserRow(
   }
   if (params.billingReadOnly !== undefined) {
     patch.billing_read_only = params.billingReadOnly;
+  }
+
+  const renewed =
+    params.stripeSubscriptionId != null &&
+    String(params.stripeSubscriptionId).startsWith("sub_") &&
+    (dbStatus === "active" || dbStatus === "trialing");
+  if (renewed) {
+    patch.data_retention_purge_after_at = null;
   }
 
   const { error } = await admin

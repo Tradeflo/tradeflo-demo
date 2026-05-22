@@ -1,12 +1,13 @@
 import { type EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { createClient } from "@/lib/supabase/server";
 
 /**
  * Token exchange endpoint for email confirmation and password resets.
  * Handles the "Token Hash" flow (PKCE) as recommended by Supabase for SSR.
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
@@ -41,3 +42,9 @@ export async function GET(request: NextRequest) {
   redirectTo.searchParams.set("auth_error", "1");
   return NextResponse.redirect(redirectTo);
 }
+
+export const GET = wrapRouteWithSentry(
+  "GET /api/auth/confirm",
+  "app",
+  handleGet,
+);

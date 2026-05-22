@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { getSessionUser } from "@/lib/api/session";
+import { billingMutationBlockedResponse } from "@/lib/billing/gate";
+import { captureApiRouteError } from "@/lib/observability/sentry-api";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { loadAggregatedWorkLogText } from "@/lib/onboarding/aggregated-work-log-text";
 import { buildQuoteGeneratePrompt } from "@/lib/quote-generation/build-prompt";
 import { loadMaterialsPricingContext } from "@/lib/quote-generation/materials-pricing-context";
@@ -14,7 +16,7 @@ import {
   QUOTE_AI_DAILY_LIMIT,
 } from "@/lib/quote-ai-rate-limit";
 
-export async function POST(req: Request) {
+async function handlePost(req: Request) {
   const { user } = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -116,7 +118,20 @@ export async function POST(req: Request) {
       dailyLimit: QUOTE_AI_DAILY_LIMIT,
     });
   } catch (e) {
+    captureApiRouteError({
+      domain: "ai",
+      route: "/api/quote/generate",
+      userId: user.id,
+      error: e,
+      extra: { step: "runAnthropicQuoteGeneration" },
+    });
     const msg = e instanceof Error ? e.message : "Generation failed";
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/quote/generate",
+  "ai",
+  handlePost,
+);

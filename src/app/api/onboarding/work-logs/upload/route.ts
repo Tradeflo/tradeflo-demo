@@ -2,10 +2,8 @@ import { randomUUID } from "crypto";
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
 import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { getSessionUser } from "@/lib/api/session";
-import {
-  extractWorkLogText,
-  workLogKindFromName,
-} from "@/lib/onboarding/extract-work-log-text";
+import { extractWorkLogText, workLogKindFromName } from "@/lib/onboarding/extract-work-log-text";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { patchUserInfoOrInsert } from "@/lib/supabase/user-info";
 import { createClient } from "@/lib/supabase/server";
 
@@ -35,7 +33,7 @@ function fileNameFromBlob(blob: Blob): string {
   return "upload.pdf";
 }
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -141,3 +139,9 @@ export async function POST(request: Request) {
     },
   });
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/onboarding/work-logs/upload",
+  "app",
+  handlePost,
+);

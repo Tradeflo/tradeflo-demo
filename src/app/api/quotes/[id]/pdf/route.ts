@@ -2,6 +2,8 @@ import { jsonError, unauthorized } from "@/lib/api/responses";
 import { getSessionUser } from "@/lib/api/session";
 import { quotePdfFilename } from "@/lib/pdf/quote-pdf-filename";
 import { renderSentQuotePdf } from "@/lib/pdf/render-sent-quote-pdf";
+import { captureApiRouteError } from "@/lib/observability/sentry-api";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { parseQuoteDraftPayload } from "@/lib/quotes/draft-payload";
 import { quoteIdParamSchema } from "@/lib/schemas/quotes";
 import { createClient } from "@/lib/supabase/server";
@@ -33,7 +35,7 @@ function pickDefaultExportVersion(versions: VersionRow[]): VersionRow | null {
   return sent[0] ?? null;
 }
 
-export async function GET(request: Request, context: RouteContext) {
+async function handleGet(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -127,7 +129,20 @@ export async function GET(request: Request, context: RouteContext) {
       },
     });
   } catch (e) {
+    captureApiRouteError({
+      domain: "app",
+      route: "GET /api/quotes/[id]/pdf",
+      userId: user.id,
+      error: e,
+      extra: { step: "pdf_render" },
+    });
     const message = e instanceof Error ? e.message : "PDF render failed";
     return jsonError(message, 500);
   }
 }
+
+export const GET = wrapRouteWithSentry(
+  "GET /api/quotes/[id]/pdf",
+  "app",
+  handleGet,
+);

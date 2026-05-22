@@ -4,9 +4,10 @@ import { formatQuoteResponse } from "@/lib/api/quotes-format";
 import type { QuoteWithVersionRows } from "@/lib/api/quotes-format";
 import { getSessionUser } from "@/lib/api/session";
 import { createQuoteBodySchema } from "@/lib/schemas/quotes";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+async function handleGet() {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -29,7 +30,7 @@ export async function GET() {
   });
 }
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -111,3 +112,14 @@ export async function POST(request: Request) {
     data: formatQuoteResponse(full as QuoteWithVersionRows),
   });
 }
+
+export const GET = wrapRouteWithSentry(
+  "GET /api/quotes",
+  "app",
+  handleGet,
+);
+export const POST = wrapRouteWithSentry(
+  "POST /api/quotes",
+  "app",
+  handlePost,
+);

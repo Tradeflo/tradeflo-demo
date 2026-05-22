@@ -2,6 +2,8 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { getSessionUser } from "@/lib/api/session";
+import { captureApiRouteError } from "@/lib/observability/sentry-api";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 
 const CHAT_SYSTEM = `You are a friendly AI estimator for Tradeflo AI, a quoting tool for trades contractors in Atlantic Canada.
 
@@ -20,7 +22,7 @@ When ready:
 READY_TO_QUOTE
 {"jobType":"...","propertyType":"...","sqft":"...","scope":"...","materials":"...","location":"Atlantic Canada","timeline":"..."}`;
 
-export async function POST(req: Request) {
+async function handlePost(req: Request) {
   const { user } = await getSessionUser();
   if (!user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -56,14 +58,44 @@ export async function POST(req: Request) {
     });
   }
 
-  const modelMessages = await convertToModelMessages(body.messages);
+  let modelMessages;
+  try {
+    modelMessages = await convertToModelMessages(body.messages);
+  } catch (e) {
+    captureApiRouteError({
+      domain: "ai",
+      route: "/api/chat",
+      userId: user.id,
+      error: e,
+      extra: { step: "convertToModelMessages" },
+    });
+    return new Response(
+      JSON.stringify({ error: "Could not process messages" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
 
   const result = streamText({
     model: anthropic("claude-sonnet-4-20250514"),
     system: CHAT_SYSTEM,
     messages: modelMessages,
     maxOutputTokens: 800,
+    onError: ({ error }) => {
+      captureApiRouteError({
+        domain: "ai",
+        route: "/api/chat",
+        userId: user.id,
+        error,
+        extra: { stream: true },
+      });
+    },
   });
 
   return result.toUIMessageStreamResponse();
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/chat",
+  "ai",
+  handlePost,
+);
