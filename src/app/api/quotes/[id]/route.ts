@@ -5,11 +5,12 @@ import type { QuoteWithVersionRows } from "@/lib/api/quotes-format";
 import { getSessionUser } from "@/lib/api/session";
 import { parseQuoteDraftPayload } from "@/lib/quotes/draft-payload";
 import { patchQuoteBodySchema, quoteIdParamSchema } from "@/lib/schemas/quotes";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { createClient } from "@/lib/supabase/server";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, context: RouteContext) {
+async function handleGet(_request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -39,7 +40,7 @@ export async function GET(_request: Request, context: RouteContext) {
   return jsonOk({ data: formatQuoteResponse(data as QuoteWithVersionRows) });
 }
 
-export async function PATCH(request: Request, context: RouteContext) {
+async function handlePatch(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -188,3 +189,14 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   return jsonOk({ data: formatQuoteResponse(full as QuoteWithVersionRows) });
 }
+
+export const GET = wrapRouteWithSentry(
+  "GET /api/quotes/[id]",
+  "app",
+  handleGet,
+);
+export const PATCH = wrapRouteWithSentry(
+  "PATCH /api/quotes/[id]",
+  "app",
+  handlePatch,
+);

@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/api/session";
 import { materialsCatalogPatchSchema } from "@/lib/schemas/materials-catalog-admin";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -12,7 +13,7 @@ const uuidParamSchema = z.string().uuid();
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function PATCH(request: Request, context: RouteContext) {
+async function handlePatch(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -79,3 +80,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   return jsonOk({ ok: true });
 }
+
+export const PATCH = wrapRouteWithSentry(
+  "PATCH /api/admin/materials-catalog/[id]",
+  "app",
+  handlePatch,
+);

@@ -1,10 +1,12 @@
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
 import { getSessionUser } from "@/lib/api/session";
 import { onboardingReadyToMarkComplete } from "@/lib/onboarding/completion";
+import { captureApiRouteError } from "@/lib/observability/sentry-api";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { patchUserInfoOrInsert } from "@/lib/supabase/user-info";
 import { createClient } from "@/lib/supabase/server";
 
-export async function POST() {
+async function handlePost() {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -50,7 +52,13 @@ export async function POST() {
     .maybeSingle();
 
   if (verifyErr || verify?.onboarding_completed !== true) {
-    console.error("[onboarding/complete] verify failed:", verifyErr, verify);
+    captureApiRouteError({
+      domain: "app",
+      route: "/api/onboarding/complete",
+      userId: user.id,
+      error: verifyErr ?? new Error("onboarding_completed verify mismatch"),
+      extra: { verify: verify?.onboarding_completed },
+    });
     return jsonError(
       verifyErr?.message ??
         "Could not save onboarding completion. Check user_info row and RLS.",
@@ -63,3 +71,9 @@ export async function POST() {
     redirectTo: "/",
   });
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/onboarding/complete",
+  "app",
+  handlePost,
+);

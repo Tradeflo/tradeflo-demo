@@ -1,9 +1,10 @@
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
 import { getSessionUser } from "@/lib/api/session";
 import { patchUserInfoOrInsert } from "@/lib/supabase/user-info";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { createClient } from "@/lib/supabase/server";
 
-export async function POST() {
+async function handlePost() {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -18,3 +19,9 @@ export async function POST() {
 
   return jsonOk({ success: true });
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/onboarding/skip-work-logs",
+  "app",
+  handlePost,
+);

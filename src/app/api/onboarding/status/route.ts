@@ -6,9 +6,10 @@ import {
   computeOnboardingCompleted,
 } from "@/lib/onboarding/completion";
 import type { OnboardingBusinessBody } from "@/lib/schemas/onboarding";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+async function handleGet() {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -60,3 +61,9 @@ export async function GET() {
     businessPrefill,
   });
 }
+
+export const GET = wrapRouteWithSentry(
+  "GET /api/onboarding/status",
+  "app",
+  handleGet,
+);

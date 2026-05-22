@@ -3,6 +3,7 @@ import { isTradefloAdminUser } from "@/lib/admin/tradeflo-admin";
 import { getSessionUser } from "@/lib/api/session";
 import { userRoleSchema } from "@/lib/schemas/user-role";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
@@ -18,7 +19,7 @@ const patchBodySchema = z
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function PATCH(request: Request, context: RouteContext) {
+async function handlePatch(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -63,3 +64,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   return jsonOk({ ok: true });
 }
+
+export const PATCH = wrapRouteWithSentry(
+  "PATCH /api/admin/users/[id]",
+  "app",
+  handlePatch,
+);

@@ -7,13 +7,14 @@ import {
   loadPublicApprovalByToken,
 } from "@/lib/approval/public-by-token";
 import { approveActionBodySchema } from "@/lib/schemas/approval";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 
 export const runtime = "nodejs";
 
 type RouteContext = { params: Promise<{ token: string }> };
 
 /** Public: quote preview for customer approval link (SRS §4.4). */
-export async function GET(_request: Request, context: RouteContext) {
+async function handleGet(_request: Request, context: RouteContext) {
   const { token } = await context.params;
   const data = await loadPublicApprovalByToken(token);
   if (!data.ok) {
@@ -30,7 +31,7 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 /** Public: single-use approve or request-changes (SRS §4.4). */
-export async function POST(request: Request, context: RouteContext) {
+async function handlePost(request: Request, context: RouteContext) {
   const { token } = await context.params;
 
   let body: unknown;
@@ -57,3 +58,14 @@ export async function POST(request: Request, context: RouteContext) {
 
   return jsonOk({ ok: true });
 }
+
+export const GET = wrapRouteWithSentry(
+  "GET /api/approve/[token]",
+  "app",
+  handleGet,
+);
+export const POST = wrapRouteWithSentry(
+  "POST /api/approve/[token]",
+  "app",
+  handlePost,
+);

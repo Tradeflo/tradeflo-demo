@@ -2,6 +2,8 @@ import type Stripe from "stripe";
 import { getPublicSiteOrigin } from "@/lib/env/public-site-origin";
 import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
 import { getSessionUser } from "@/lib/api/session";
+import { captureApiRouteError } from "@/lib/observability/sentry-api";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { getStripe } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,7 +18,7 @@ const STRIPE_TRIAL_DAYS = 14;
  *
  * Plan: 14-day trial (CC required), auto-converts to paid; Canadian GST/HST via Stripe Tax.
  */
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -28,10 +30,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const origin = getPublicSiteOrigin(request);
+  const origin = getPublicSiteOrigin();
   if (!origin) {
     return jsonError(
-      "Set NEXT_PUBLIC_BASE_URL for checkout redirects, or use a reachable Host.",
+      "Set NEXT_PUBLIC_BASE_URL for checkout redirects.",
       500,
     );
   }
@@ -77,11 +79,36 @@ export async function POST(request: Request) {
     params.customer_update = { address: "auto", name: "auto" };
   }
 
-  const session = await stripe.checkout.sessions.create(params);
+  let session: Stripe.Response<Stripe.Checkout.Session>;
+  try {
+    session = await stripe.checkout.sessions.create(params);
+  } catch (e) {
+    captureApiRouteError({
+      domain: "billing",
+      route: "/api/billing/checkout",
+      userId: user.id,
+      error: e,
+      extra: { step: "checkout.sessions.create" },
+    });
+    return jsonError("Could not start checkout. Try again or contact support.", 502);
+  }
 
   if (!session.url) {
+    captureApiRouteError({
+      domain: "billing",
+      route: "/api/billing/checkout",
+      userId: user.id,
+      error: new Error("Stripe checkout session missing redirect url"),
+      extra: { step: "checkout.session.url" },
+    });
     return jsonError("Could not start checkout session", 500);
   }
 
   return jsonOk({ url: session.url });
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/billing/checkout",
+  "billing",
+  handlePost,
+);

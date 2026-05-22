@@ -18,11 +18,13 @@ import {
   quoteGenerateRequestSchema,
 } from "@/lib/schemas/quote-builder";
 import { quoteIdParamSchema } from "@/lib/schemas/quotes";
+import { captureApiRouteError } from "@/lib/observability/sentry-api";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { createClient } from "@/lib/supabase/server";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function POST(request: Request, context: RouteContext) {
+async function handlePost(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -67,6 +69,13 @@ export async function POST(request: Request, context: RouteContext) {
     .maybeSingle();
 
   if (quoteErr) {
+    captureApiRouteError({
+      domain: "ai",
+      route: "/api/quotes/[id]/generate",
+      userId: user.id,
+      error: quoteErr,
+      extra: { supabase_step: "load_quote" },
+    });
     return jsonError(quoteErr.message, 500);
   }
   if (!quote) {
@@ -81,6 +90,13 @@ export async function POST(request: Request, context: RouteContext) {
     .maybeSingle();
 
   if (headErr) {
+    captureApiRouteError({
+      domain: "ai",
+      route: "/api/quotes/[id]/generate",
+      userId: user.id,
+      error: headErr,
+      extra: { supabase_step: "load_head_version" },
+    });
     return jsonError(headErr.message, 500);
   }
   if (!headVersion) {
@@ -135,6 +151,13 @@ export async function POST(request: Request, context: RouteContext) {
       sitePhotos: input.sitePhotos,
     });
   } catch (e) {
+    captureApiRouteError({
+      domain: "ai",
+      route: "/api/quotes/[id]/generate",
+      userId: user.id,
+      error: e,
+      extra: { step: "runAnthropicQuoteGeneration" },
+    });
     const msg = e instanceof Error ? e.message : "Generation failed";
     return jsonError(msg, 502);
   }
@@ -168,6 +191,13 @@ export async function POST(request: Request, context: RouteContext) {
     .eq("id", headVersion.id);
 
   if (saveErr) {
+    captureApiRouteError({
+      domain: "ai",
+      route: "/api/quotes/[id]/generate",
+      userId: user.id,
+      error: saveErr,
+      extra: { supabase_step: "save_quote_version_payload" },
+    });
     return jsonError(saveErr.message, 500);
   }
 
@@ -207,3 +237,9 @@ export async function POST(request: Request, context: RouteContext) {
     dailyLimit: QUOTE_AI_DAILY_LIMIT,
   });
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/quotes/[id]/generate",
+  "ai",
+  handlePost,
+);

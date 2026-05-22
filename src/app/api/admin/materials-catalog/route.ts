@@ -2,12 +2,13 @@ import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
 import { isTradefloAdminUser } from "@/lib/admin/tradeflo-admin";
 import { getSessionUser } from "@/lib/api/session";
 import { materialsCatalogCreateSchema } from "@/lib/schemas/materials-catalog-admin";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -84,3 +85,9 @@ export async function POST(request: Request) {
 
   return jsonOk({ id: data.id }, { status: 201 });
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/admin/materials-catalog",
+  "app",
+  handlePost,
+);

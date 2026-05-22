@@ -3,6 +3,8 @@ import { jsonError, jsonOk, unauthorized } from "@/lib/api/responses";
 import { billingMutationBlockedResponse } from "@/lib/billing/gate";
 import { getPublicSiteOrigin } from "@/lib/env/public-site-origin";
 import { getSessionUser } from "@/lib/api/session";
+import { captureApiRouteError } from "@/lib/observability/sentry-api";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import {
   deliverSentQuoteNotifications,
   quoteDeliveryConfigError,
@@ -29,14 +31,10 @@ function newApprovalToken(): string {
   return randomBytes(32).toString("base64url");
 }
 
-function approvalPublicUrl(request: Request, token: string): string {
-  const path = `/approve/${token}`;
-  const base = getPublicSiteOrigin(request);
-  if (base) {
-    return `${base}${path}`;
-  }
-  const u = new URL(request.url);
-  return `${u.protocol}//${u.host}${path}`;
+function approvalPublicUrl(token: string): string | null {
+  const base = getPublicSiteOrigin();
+  if (!base) return null;
+  return `${base}/approve/${token}`;
 }
 
 async function rollbackQuoteToDraft(params: {
@@ -69,7 +67,7 @@ async function rollbackQuoteToDraft(params: {
     .eq("user_id", userId);
 }
 
-export async function POST(request: Request, context: RouteContext) {
+async function handlePost(request: Request, context: RouteContext) {
   const { user } = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -106,6 +104,13 @@ export async function POST(request: Request, context: RouteContext) {
     .maybeSingle();
 
   if (quoteError) {
+    captureApiRouteError({
+      domain: "delivery",
+      route: "/api/quotes/[id]/send",
+      userId: user.id,
+      error: quoteError,
+      extra: { supabase_step: "load_quote" },
+    });
     return jsonError(quoteError.message, 500);
   }
   if (!quote) {
@@ -120,6 +125,13 @@ export async function POST(request: Request, context: RouteContext) {
     .maybeSingle();
 
   if (headError) {
+    captureApiRouteError({
+      domain: "delivery",
+      route: "/api/quotes/[id]/send",
+      userId: user.id,
+      error: headError,
+      extra: { supabase_step: "load_head_version" },
+    });
     return jsonError(headError.message, 500);
   }
   if (!headVersion) {
@@ -146,7 +158,13 @@ export async function POST(request: Request, context: RouteContext) {
 
   const cfgErr = quoteDeliveryConfigError(parsedPayload.delivery);
   if (cfgErr) {
-    console.warn("[quotes/send] delivery config:", cfgErr);
+    captureApiRouteError({
+      domain: "delivery",
+      route: "/api/quotes/[id]/send",
+      userId: user.id,
+      error: new Error("Quote delivery providers not configured"),
+      extra: { reason: "missing_env_or_from" },
+    });
     return jsonError(
       quoteDeliveryConfigMessageForClient(parsedPayload.delivery),
       503,
@@ -197,6 +215,13 @@ export async function POST(request: Request, context: RouteContext) {
     .select("id");
 
   if (lockError) {
+    captureApiRouteError({
+      domain: "delivery",
+      route: "/api/quotes/[id]/send",
+      userId: user.id,
+      error: lockError,
+      extra: { supabase_step: "lock_quote_draft" },
+    });
     return jsonError(lockError.message, 500);
   }
   if (!lockedRows?.length) {
@@ -218,6 +243,13 @@ export async function POST(request: Request, context: RouteContext) {
     .select("id, version_number");
 
   if (versionError) {
+    captureApiRouteError({
+      domain: "delivery",
+      route: "/api/quotes/[id]/send",
+      userId: user.id,
+      error: versionError,
+      extra: { supabase_step: "mark_version_sent" },
+    });
     await supabase
       .from("quotes")
       .update({ status: "draft" })
@@ -238,7 +270,10 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const approvalLink = approvalPublicUrl(request, token);
+  const approvalLink = approvalPublicUrl(token);
+  if (!approvalLink) {
+    return jsonError("Set NEXT_PUBLIC_BASE_URL for approval links.", 500);
+  }
 
   const deliver = await deliverSentQuoteNotifications({
     payload: finalPayload as QuoteDraftPayloadV1,
@@ -248,7 +283,13 @@ export async function POST(request: Request, context: RouteContext) {
   });
 
   if (!deliver.ok) {
-    console.error("[quotes/send] delivery failed:", deliver.error);
+    captureApiRouteError({
+      domain: "delivery",
+      route: "/api/quotes/[id]/send",
+      userId: user.id,
+      error: new Error("Quote delivery failed after send"),
+      extra: { quote_id: quoteId },
+    });
     await rollbackQuoteToDraft({
       supabase,
       quoteId,
@@ -277,3 +318,9 @@ export async function POST(request: Request, context: RouteContext) {
     },
   });
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/quotes/[id]/send",
+  "delivery",
+  handlePost,
+);

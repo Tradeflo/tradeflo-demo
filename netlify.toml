@@ -1,3 +1,11 @@
 [build]
-  publish = ".next"
   command = "npm run build"
+  publish = ".next"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Daily at 00:00 UTC — invokes POST /api/cron/data-retention-purge via scheduled function.
+[functions."data-retention-purge-scheduled"]
+schedule = "@daily"

@@ -6,7 +6,10 @@ import {
   lookupUserIdByStripeSubscription,
   patchUserInfoByStripeCustomerId,
   upsertStripeSubscriptionOnUserRow,
+  dataRetentionPurgeDeadlineIsoFromNow,
 } from "@/lib/billing/stripe-sync";
+import { captureApiRouteError } from "@/lib/observability/sentry-api";
+import { wrapRouteWithSentry } from "@/lib/observability/sentry-route";
 import { getStripe } from "@/lib/stripe/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -42,8 +45,7 @@ async function resolveUserIdForSubscription(
   return lookupUserIdByStripeCustomer(admin, cid);
 }
 
-export async function POST(request: Request) {
-  console.log("Stripe webhook received");
+async function handlePost(request: Request) {
   const whSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!whSecret) {
     return new Response("STRIPE_WEBHOOK_SECRET is not configured", {
@@ -55,7 +57,6 @@ export async function POST(request: Request) {
   const rawBody = await request.text();
   const hdrList = await headers();
   const signature = hdrList.get("stripe-signature");
-  console.log("Signature:", signature);
   if (!signature) {
     return new Response("Missing stripe-signature", { status: 400 });
   }
@@ -72,7 +73,13 @@ export async function POST(request: Request) {
   let admin: ReturnType<typeof createAdminClient>;
   try {
     admin = createAdminClient();
-  } catch {
+  } catch (e) {
+    captureApiRouteError({
+      domain: "billing",
+      route: "/api/webhooks/stripe",
+      error: e,
+      extra: { step: "createAdminClient" },
+    });
     return new Response("Server misconfigured", { status: 500 });
   }
 
@@ -161,6 +168,8 @@ export async function POST(request: Request) {
             billing_subscription_status: "canceled",
             billing_grace_period_ends_at: null,
             billing_read_only: true,
+            data_retention_purge_after_at:
+              dataRetentionPurgeDeadlineIsoFromNow(),
           });
         }
         break;
@@ -174,6 +183,7 @@ export async function POST(request: Request) {
           await patchUserInfoByStripeCustomerId(admin, customerId, {
             billing_grace_period_ends_at: null,
             billing_read_only: false,
+            data_retention_purge_after_at: null,
           });
         }
 
@@ -230,7 +240,18 @@ export async function POST(request: Request) {
 
     return new Response(JSON.stringify({ received: true }), { status: 200 });
   } catch (err) {
-    console.error("[stripe webhook]", event.type, err);
+    captureApiRouteError({
+      domain: "billing",
+      route: "/api/webhooks/stripe",
+      error: err,
+      extra: { stripe_event_type: event.type },
+    });
     return new Response("Webhook handler error", { status: 500 });
   }
 }
+
+export const POST = wrapRouteWithSentry(
+  "POST /api/webhooks/stripe",
+  "billing",
+  handlePost,
+);
