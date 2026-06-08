@@ -52,14 +52,10 @@ export default async function AdminUsersPage() {
       <p style={{ fontSize: 14, color: "#555", marginBottom: 16 }}>
         <code style={{ fontSize: 13 }}>admin</code> unlocks{" "}
         <code style={{ fontSize: 13 }}>/admin</code> and skips billing write
-        locks plus the AI quote daily cap while signed in. Optional{" "}
-        <code style={{ fontSize: 13 }}>TRADEFLO_ADMIN_EMAILS</code> still works as
-        bootstrap before a row here is promoted.
+        locks plus the AI quote daily cap while signed in.
       </p>
       <p style={{ fontSize: 13, color: "#8a3520", marginBottom: 24 }}>
-        Removing admin on your account (and not listing your email in{" "}
-        <code style={{ fontSize: 12 }}>TRADEFLO_ADMIN_EMAILS</code>) ends operator
-        access.
+        Removing admin on your account ends operator access.
       </p>
 
       {error ? (

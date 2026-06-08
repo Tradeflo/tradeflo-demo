@@ -180,7 +180,7 @@ async function loadBillingProfile(
         ? data.billing_grace_period_ends_at
         : null,
     readOnly: data?.billing_read_only === true,
-    limitsBypass: bypassesLimitsFromAuthRow(data?.role, account.email),
+    limitsBypass: bypassesLimitsFromAuthRow(data?.role),
   };
 }
 
@@ -296,7 +296,7 @@ export default async function BillingPage({
               </div>
               <p className="help-text" style={{ marginBottom: 0 }}>
                 Your account skips subscription read-only locks and AI quote
-                daily limits for product use (admin role or bootstrap email).
+                daily limits for product use (admin role).
               </p>
             </div>
           ) : null}

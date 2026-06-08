@@ -134,7 +134,7 @@ export function onboardingReadyToMarkComplete(
 
 /**
  * HTML navigation: contractors must satisfy full onboarding (same as GET `/api/onboarding/status` `completed`).
- * Admins / bootstrap emails skip; transient DB errors do not force onboarding.
+ * Admins skip; transient DB errors do not force onboarding.
  */
 export async function contractorNeedsOnboardingRedirect(
   supabase: SupabaseClient,
@@ -150,7 +150,7 @@ export async function contractorNeedsOnboardingRedirect(
 
   if (error) return false;
 
-  if (bypassesLimitsFromAuthRow(data?.role, user.email)) return false;
+  if (bypassesLimitsFromAuthRow(data?.role)) return false;
 
   const { count } = await supabase
     .from("work_logs")

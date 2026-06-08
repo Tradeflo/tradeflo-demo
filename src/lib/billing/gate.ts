@@ -5,10 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * True when mutating product actions should be blocked (SRS: post–grace read-only).
- * Admins (`user_info.role = admin`) and bootstrap emails bypass.
+ * Admins (`user_info.role = admin`) bypass.
  */
 export async function billingBlocksMutations(
-  account: Pick<User, "id" | "email">,
+  account: Pick<User, "id">,
 ): Promise<boolean> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -19,7 +19,7 @@ export async function billingBlocksMutations(
 
   if (error || !data) return false;
 
-  if (bypassesLimitsFromAuthRow(data.role, account.email)) {
+  if (bypassesLimitsFromAuthRow(data.role)) {
     return false;
   }
 
@@ -39,7 +39,7 @@ export async function billingBlocksMutations(
 
 /** Returns a 402 response when billing blocks writes; otherwise `null`. */
 export async function billingMutationBlockedResponse(
-  account: Pick<User, "id" | "email">,
+  account: Pick<User, "id">,
 ): Promise<Response | null> {
   const blocked = await billingBlocksMutations(account);
   if (!blocked) return null;

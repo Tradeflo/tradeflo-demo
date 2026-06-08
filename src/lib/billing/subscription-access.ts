@@ -23,7 +23,7 @@ export function hasContractorBillingSubscription(row: {
 
 /**
  * HTML navigation: contractors without an active Stripe subscription go to `/billing`.
- * Admins / bootstrap emails skip; transient DB errors do not force billing.
+ * Admins skip; transient DB errors do not force billing.
  */
 export async function contractorNeedsBillingSubscriptionRedirect(
   supabase: SupabaseClient,
@@ -39,7 +39,7 @@ export async function contractorNeedsBillingSubscriptionRedirect(
 
   if (!data) return true;
 
-  if (bypassesLimitsFromAuthRow(data.role, user.email)) return false;
+  if (bypassesLimitsFromAuthRow(data.role)) return false;
 
   return !hasContractorBillingSubscription(data);
 }

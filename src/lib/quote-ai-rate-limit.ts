@@ -26,11 +26,11 @@ export type ConsumeQuoteAiSlotResult =
   | { ok: false; reason: "limit"; limit: number }
   | { ok: false; reason: "rpc"; message: string };
 
-/** Atomically reserves one daily slot (RPC). Admins bootstrap emails bypass the cap. */
+/** Atomically reserves one daily slot (RPC). Admins bypass the cap. */
 export async function consumeQuoteAiGenerationSlot(
   supabase: SupabaseServer,
   userId: string,
-  account: Pick<User, "id" | "email">,
+  account: Pick<User, "id">,
 ): Promise<ConsumeQuoteAiSlotResult> {
   if (await userBypassesSubscriptionLimits(supabase, account)) {
     return {
