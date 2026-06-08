@@ -41,17 +41,70 @@ async function handlePost(request: Request) {
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from("user_info")
-    .select("stripe_customer_id")
+    .select(
+      "stripe_customer_id, stripe_subscription_id, billing_subscription_status",
+    )
     .eq("id", user.id)
     .maybeSingle();
 
-  const stripeCustomerId =
+  // One subscription per user: block starting a new one while another is live.
+  const liveStatuses = ["active", "trialing", "past_due", "unpaid"];
+  if (
+    typeof profile?.stripe_subscription_id === "string" &&
+    profile.stripe_subscription_id.startsWith("sub_") &&
+    liveStatuses.includes(profile.billing_subscription_status ?? "")
+  ) {
+    return jsonError(
+      "You already have an active subscription. Manage it from the billing portal.",
+      409,
+    );
+  }
+
+  const stripe = getStripe();
+
+  // Resolve exactly one Stripe customer for this user, then persist it so every
+  // future checkout reuses it (prevents duplicate customers for the same email).
+  let stripeCustomerId =
     typeof profile?.stripe_customer_id === "string" &&
     profile.stripe_customer_id.startsWith("cus_")
       ? profile.stripe_customer_id
       : undefined;
 
-  const stripe = getStripe();
+  if (!stripeCustomerId) {
+    try {
+      // Recover a customer already tied to this user (e.g. created by an earlier checkout).
+      const found = await stripe.customers.search({
+        query: `metadata['supabase_user_id']:'${user.id}'`,
+        limit: 1,
+      });
+      stripeCustomerId = found.data[0]?.id;
+    } catch {
+      // Search can be eventually-consistent or disabled; fall through to create.
+    }
+
+    if (!stripeCustomerId) {
+      const created = await stripe.customers.create({
+        email: user.email ?? undefined,
+        metadata: { supabase_user_id: user.id },
+      });
+      stripeCustomerId = created.id;
+    }
+
+    const { error: persistError } = await supabase
+      .from("user_info")
+      .update({ stripe_customer_id: stripeCustomerId })
+      .eq("id", user.id);
+    if (persistError) {
+      captureApiRouteError({
+        domain: "billing",
+        route: "/api/billing/checkout",
+        userId: user.id,
+        error: new Error(persistError.message),
+        extra: { step: "persist_stripe_customer_id" },
+      });
+    }
+  }
+
   const params: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
@@ -59,8 +112,7 @@ async function handlePost(request: Request) {
     cancel_url: `${origin}/billing?billing_cancel=1`,
     client_reference_id: user.id,
     customer: stripeCustomerId,
-    customer_email:
-      !stripeCustomerId && user.email ? user.email : undefined,
+    customer_update: { address: "auto", name: "auto" },
     payment_method_collection: "always",
     automatic_tax: { enabled: true },
     tax_id_collection: { enabled: true },
@@ -74,10 +126,6 @@ async function handlePost(request: Request) {
     },
     metadata: { supabase_user_id: user.id },
   };
-
-  if (stripeCustomerId) {
-    params.customer_update = { address: "auto", name: "auto" };
-  }
 
   let session: Stripe.Response<Stripe.Checkout.Session>;
   try {

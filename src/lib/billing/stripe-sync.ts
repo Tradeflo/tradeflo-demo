@@ -43,7 +43,7 @@ function mapStripeSubscriptionStatus(status: string): BillingSubscriptionStatusD
 }
 
 /** Update profile row after Stripe subscription payloads (webhooks). */
-export async function upsertStripeSubscriptionOnUserRow(
+export async function updateUserBillingFromStripe(
   admin: SupabaseClient,
   params: {
     userId: string;
@@ -87,12 +87,13 @@ export async function upsertStripeSubscriptionOnUserRow(
     patch.data_retention_purge_after_at = null;
   }
 
-  const { error } = await admin
+  const { data, error } = await admin
     .from("user_info")
     .update(patch)
-    .eq("id", params.userId);
+    .eq("id", params.userId)
+    .select("id");
 
-  return { error: error?.message };
+  return { error: error?.message, matchedRows: data?.length ?? 0 };
 }
 
 /** Patch all rows tied to `stripe_customer_id` (typically one contractor). */
