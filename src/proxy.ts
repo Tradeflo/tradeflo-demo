@@ -65,22 +65,24 @@ export async function proxy(request: NextRequest) {
       return redirectPreservingSessionCookies(response, url);
     }
 
-    if (
-      user &&
-      !isPublicPath(pathname) &&
-      !isOnboardingPath(pathname) &&
-      (await contractorNeedsOnboardingRedirect(supabase, user))
-    ) {
+    const needsOnboarding =
+      user && !isPublicPath(pathname)
+        ? await contractorNeedsOnboardingRedirect(supabase, user)
+        : false;
+
+    if (user && !isPublicPath(pathname) && !isOnboardingPath(pathname) && needsOnboarding) {
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = "/onboarding";
       onboardingUrl.search = "";
       return redirectPreservingSessionCookies(response, onboardingUrl);
     }
 
+    // Billing only after onboarding — otherwise /onboarding ↔ /billing loops for new users.
     if (
       user &&
       !isPublicPath(pathname) &&
       !isBillingPath(pathname) &&
+      !needsOnboarding &&
       (await contractorNeedsBillingSubscriptionRedirect(supabase, user))
     ) {
       const billingUrl = request.nextUrl.clone();
