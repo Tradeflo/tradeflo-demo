@@ -18,10 +18,7 @@ async function handleGet() {
     .eq("id", user.id)
     .maybeSingle();
 
-  const nav: HeaderNavVariant = bypassesLimitsFromAuthRow(
-    data?.role,
-    user.email,
-  )
+  const nav: HeaderNavVariant = bypassesLimitsFromAuthRow(data?.role)
     ? "admin"
     : "contractor";
 

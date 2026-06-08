@@ -2,29 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
 import type { UserRole } from "@/lib/schemas/user-role";
 
-/** Optional bootstrap (comma-separated emails) until promoted in DB. */
-export function parseTradefloAdminEmails(): Set<string> {
-  const raw = process.env.TRADEFLO_ADMIN_EMAILS ?? "";
-  const emails = raw
-    .split(/[,;\s]+/)
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  return new Set(emails);
-}
-
-export function isTradefloAdminBootstrapEmail(
-  email: string | undefined | null,
-): boolean {
-  if (!email?.trim()) return false;
-  return parseTradefloAdminEmails().has(email.trim().toLowerCase());
-}
-
 /** Used when role is already loaded with billing fields (one round-trip). */
-export function bypassesLimitsFromAuthRow(
-  role: unknown,
-  email: string | undefined | null,
-): boolean {
-  if (isTradefloAdminBootstrapEmail(email)) return true;
+export function bypassesLimitsFromAuthRow(role: unknown): boolean {
   return role === "admin";
 }
 
@@ -50,10 +29,10 @@ export async function isTradefloAdminDb(
   return r === "admin";
 }
 
-/** Billing read-only + quote AI daily cap bypass (admin row or bootstrap email). */
+/** Billing read-only + quote AI daily cap bypass (admin role). */
 export async function userBypassesSubscriptionLimits(
   supabase: SupabaseClient,
-  user: Pick<User, "id" | "email">,
+  user: Pick<User, "id">,
 ): Promise<boolean> {
   const { data } = await supabase
     .from("user_info")
@@ -61,15 +40,15 @@ export async function userBypassesSubscriptionLimits(
     .eq("id", user.id)
     .maybeSingle();
 
-  return bypassesLimitsFromAuthRow(data?.role, user.email);
+  return bypassesLimitsFromAuthRow(data?.role);
 }
 
 /**
- * /admin APIs when signed in: TRADEFLO_ADMIN_EMAILS OR user_info.role = admin.
+ * /admin APIs when signed in: user_info.role = admin.
  */
 export async function isTradefloAdminUser(
   supabase: SupabaseClient,
-  user: Pick<User, "id" | "email">,
+  user: Pick<User, "id">,
 ): Promise<boolean> {
   return userBypassesSubscriptionLimits(supabase, user);
 }
