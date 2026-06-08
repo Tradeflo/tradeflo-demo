@@ -168,7 +168,7 @@ async function loadBillingProfile(
 
   const customerId =
     typeof data?.stripe_customer_id === "string" &&
-    data.stripe_customer_id.startsWith("cus_")
+      data.stripe_customer_id.startsWith("cus_")
       ? data.stripe_customer_id
       : null;
 
@@ -302,9 +302,9 @@ export default async function BillingPage({
           ) : null}
 
           {!profile.limitsBypass &&
-          !profile.readOnly &&
-          profile.status === "past_due" &&
-          graceEndsInFuture ? (
+            !profile.readOnly &&
+            profile.status === "past_due" &&
+            graceEndsInFuture ? (
             <div
               className="card"
               role="status"

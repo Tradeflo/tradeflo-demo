@@ -5,7 +5,7 @@ import {
   lookupUserIdByStripeCustomer,
   lookupUserIdByStripeSubscription,
   patchUserInfoByStripeCustomerId,
-  upsertStripeSubscriptionOnUserRow,
+  updateUserBillingFromStripe,
   dataRetentionPurgeDeadlineIsoFromNow,
 } from "@/lib/billing/stripe-sync";
 import { captureApiRouteError } from "@/lib/observability/sentry-api";
@@ -109,7 +109,7 @@ async function handlePost(request: Request) {
         ) {
           const sub = await stripe.subscriptions.retrieve(subscriptionId);
 
-          await upsertStripeSubscriptionOnUserRow(admin, {
+          const { error } = await updateUserBillingFromStripe(admin, {
             userId,
             stripeCustomerId: customerId,
             stripeSubscriptionId: sub.id,
@@ -118,6 +118,15 @@ async function handlePost(request: Request) {
               sub.status === "active" || sub.status === "trialing",
             billingReadOnly: false,
           });
+          if (error) {
+            captureApiRouteError({
+              domain: "billing",
+              route: "/api/webhooks/stripe",
+              userId,
+              error: new Error(error),
+              extra: { stripe_event_type: event.type },
+            });
+          }
         }
         break;
       }
@@ -145,7 +154,7 @@ async function handlePost(request: Request) {
           sub.status === "active" || sub.status === "trialing";
 
         if (userId && customerId?.startsWith("cus_")) {
-          await upsertStripeSubscriptionOnUserRow(admin, {
+          const { error } = await updateUserBillingFromStripe(admin, {
             userId,
             stripeCustomerId: customerId,
             stripeSubscriptionId: sub.status === "canceled" ? null : sub.id,
@@ -154,6 +163,15 @@ async function handlePost(request: Request) {
             billingReadOnly: readOnly ? true : false,
             graceEndsAt: readOnly ? null : undefined,
           });
+          if (error) {
+            captureApiRouteError({
+              domain: "billing",
+              route: "/api/webhooks/stripe",
+              userId,
+              error: new Error(error),
+              extra: { stripe_event_type: event.type },
+            });
+          }
         }
 
         break;
@@ -192,7 +210,7 @@ async function handlePost(request: Request) {
           const hydrated = await stripe.subscriptions.retrieve(subId);
           const uid = await resolveUserIdForSubscription(admin, hydrated);
           if (uid && customerId) {
-            await upsertStripeSubscriptionOnUserRow(admin, {
+            await updateUserBillingFromStripe(admin, {
               userId: uid,
               stripeCustomerId: customerId,
               stripeSubscriptionId: hydrated.id,
@@ -223,7 +241,7 @@ async function handlePost(request: Request) {
             (await resolveUserIdForSubscription(admin, hydrated)) ??
             (await lookupUserIdByStripeSubscription(admin, subId));
           if (uid) {
-            await upsertStripeSubscriptionOnUserRow(admin, {
+            await updateUserBillingFromStripe(admin, {
               userId: uid,
               stripeCustomerId: customerId,
               stripeSubscriptionId: hydrated.id,
